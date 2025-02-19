@@ -1,0 +1,17 @@
+name: gapfill
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.7.8=hffdb5ce_3_cpython
+  - pytorch=1.9.0=py3.7_cuda11.1_cudnn8.0.5_0
+  - pytorch-lightning=1.4.8=pyhd8ed1ab_0
+  - jupyterlab=3.0.14=pyhd8ed1ab_0
+  - matplotlib=3.4.2=py37h89c1867_0
+  - numpy==1.20
+  - netcdf4=1.5.6=nompi_py37h946d57d_103
+  - xarray=0.19.0=pyhd8ed1ab_1
+  - scipy=1.7.1=py37hf2a6cf1_0
+  - nb_conda_kernels

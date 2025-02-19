@@ -1,0 +1,9 @@
+
+# Usage
+
+1. Install conda
+2. cd to the gapfill directory
+3. Run `conda env create -f environment.yml` (may take a while)
+4. Open the notebook `gapfill.ipynb`
+5. Select the kernel `gapfill` (which was installed in step 3)
+6. Run the notebook
