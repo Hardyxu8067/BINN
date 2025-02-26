@@ -30,14 +30,17 @@ To use graph neural network, you may need to install these libraries as well. Th
 pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.5.0+cu124.html
 ```
 
-You need to download the PRODA parameters from [this link](https://drive.google.com/file/d/1AHSgMRjxtrYRU0i1EarJC6QC_OUjzQIG/view?usp=drive_link). Place the zip file in the `INPUT_DATA` directory, and unzip:
+You need to download the PRODA parameters from [this link](https://drive.google.com/file/d/1AGDlybz35n3gHqyNilVthVzOaBkNZAXr/view?usp=sharing), place in the `ENSEMBLE/INPUT_DATA` directory, and unzip. One way to download this is using `gdown`:
 ```
-unzip PRODA_Results.zip
+pip install gdown
+cd ENSEMBLE/INPUT_DATA
+gdown 1AGDlybz35n3gHqyNilVthVzOaBkNZAXr
+unzip PRODA_Results_Subset.zip
 ```
 
 ### Alternate commands to install
 
-If installing the `requirements.txt` file does not work directly, you can try manually installing packages.
+If installing the `requirements.txt` file did not work, you can try manually installing packages.
 ```
 pip install numpy scipy pandas matplotlib scikit-learn geopandas mat73 netCDF4
 pip install torch torchvision torchaudio 
@@ -46,9 +49,14 @@ pip install torch_geometric
 
 ## Running Instructions
 
-From the `src_binns` directory, run `./run_binn_interactive.sh` for an example of how to train on 4 GPUs from command-line (interactively).
+The script `BINN_clean/src_binns/run_binn.sh` contains an example of how to train on 4 GPUs from command-line (interactively). Run like this:
+```
+cd BINN_clean/src_binns
+chmod +x run_binn.sh  # If execute permission not enabled
+./run_binn.sh
+```
 
-Run `./run_binn_slurm.sh` for an example of how to train on 4 GPUs on a server with the Slurm scheduler.
+The script `BINN_clean/src_binns/run_binn_slurm.sh` contains an example of how to train on 4 GPUs on a server with the Slurm scheduler.
 
 ## Code summary
 
