@@ -191,9 +191,11 @@ def plot_observations_world_map(lons, lats, values, plot_dir, var_name, title=No
 
     # Plot world map
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.lon, df.lat))
-    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world.boundary.plot(ax=ax, color='gray')
+    world = gpd.read_file("../INPUT_DATA/maps/naturalearth/ne_50m_admin_0_countries.shp")  # Formerly gpd.datasets.get_path('naturalearth_lowres'))
+    world.plot(ax=ax, color='gray')  # world.boundary.plot(ax=ax, color='gray')
     if us_only:
+        states = gpd.read_file("../INPUT_DATA/maps/naturalearth/ne_50m_admin_1_states_provinces_lines.shp")
+        states.plot(ax=ax, color='gray')
         ax.set_xlim(-124.8, -66.9)
         ax.set_ylim(24.5, 49.4)
     gdf.plot(column=var_name, ax=ax, marker='o', markersize=8, legend=True, zorder=10)  # legend_kwds={'shrink': 0.7},
@@ -212,6 +214,7 @@ def plot_observations_world_map(lons, lats, values, plot_dir, var_name, title=No
     # plt.title(title)
     # plt.savefig(os.path.join(plot_dir, "histogram_{}.png".format(var_name)))
     # plt.close()
+
 
 def plot_map_grid(filename, lons_list, lats_list, values_list, vars_list, us_only=False, cols=None):
     n_plots = len(lons_list)

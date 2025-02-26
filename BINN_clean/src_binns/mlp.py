@@ -4,14 +4,14 @@ import torch.nn.functional as F
 from lipmlp import lipmlp
 from fun_matrix_clm5_vectorized import fun_model_simu, fun_model_prediction
 from pe_gcn_model import GridCellSpatialRelationEncoder
-from misc_utils import select_depth
+from misc_utils import get_activation, select_depth
 from spatial_utils import *
 
 class mlp(torch.nn.Module):
 	"""
 	New MLP from this repo: https://github.com/whitneychiu/lipmlp_pytorch/blob/main/models/mlp.py
 	"""
-	def __init__(self, dims, use_bn=False, dropout_prob=0.0, leaky_relu=False, init='xavier_uniform'):
+	def __init__(self, dims, use_bn=False, dropout_prob=0.0, activation='relu', init='xavier_uniform'):
 		"""
 		dim[0]: input dim
 		dim[1:-1]: hidden dims
@@ -35,26 +35,26 @@ class mlp(torch.nn.Module):
 			if use_bn:
 				self.bns.append(torch.nn.BatchNorm1d(dims[ii+1]))
 		self.layer_output = torch.nn.Linear(dims[-2], dims[-1])
-		if leaky_relu:
-			self.relu = nn.LeakyReLU(negative_slope=0.3)
-		else:
-			self.relu = torch.nn.ReLU()
+		self.act = get_activation(activation)
 
 		# Initialize linear layers
 		if init == "xavier_uniform":
-			gain_leaky_relu = nn.init.calculate_gain('leaky_relu', 0.3)
+			if activation == 'leaky_relu':
+				gain_activation = nn.init.calculate_gain(activation, 0.3)
+			else:
+				gain_activation = nn.init.calculate_gain(activation)
 			gain_sigmoid = nn.init.calculate_gain('sigmoid')
 			for layer in self.layers:
-				nn.init.xavier_uniform_(layer.weight, gain=gain_leaky_relu)
+				nn.init.xavier_uniform_(layer.weight, gain=gain_activation)
 				nn.init.zeros_(layer.bias)
 			nn.init.xavier_uniform_(self.layer_output.weight, gain=gain_sigmoid)
 			nn.init.zeros_(self.layer_output.bias)
 		elif init == "kaiming_uniform":
 			for layer in self.layers + [self.layer_output]:
-				if leaky_relu:
-					nn.init.kaiming_uniform_(layer.weight, nonlinearity='leaky_relu', a=0.3)
+				if activation == 'leaky_relu':
+					nn.init.kaiming_uniform_(layer.weight, nonlinearity=activation, a=0.3)
 				else:
-					nn.init.kaiming_uniform_(layer.weight, nonlinearity='relu')
+					nn.init.kaiming_uniform_(layer.weight, nonlinearity=activation)
 			nn.init.zeros_(self.layer_output.bias)
 		elif init == 'default':
 			pass
@@ -72,7 +72,7 @@ class mlp(torch.nn.Module):
 			x = self.layers[ii](x)
 			if self.use_bn:
 				x = self.bns[ii](x)
-			x = self.relu(x)
+			x = self.act(x)
 			if self.dropout_prob > 0:
 				x = self.dropout(x)
 
@@ -135,10 +135,11 @@ class mlp(torch.nn.Module):
 #---------------------------------------------------
 # define model
 class mlp_wrapper(nn.Module):
-	def __init__(self, input_vars, var_idx_to_emb, vertical_mixing, vectorized='true', pos_enc='early',
+	def __init__(self, input_vars, var_idx_to_emb, vertical_mixing, vectorized='yes', pos_enc='early',
 				 lipschitz=False, one_hot=False, use_bn=False, dropout_prob=0.0,
-				 leaky_relu=False, train_x=None,
-				 min_temp=10, max_temp=109, init="xavier_uniform", width=128):
+				 activation='relu', train_x=None,
+				 min_temp=10, max_temp=109, init="xavier_uniform", width=128,
+				 para_index=None):
 		"""
 		var_idx_to_emb is a dictionary mapping from categorical variable index to either
 		(1) Embedding layer (if one_hot is False)
@@ -146,6 +147,9 @@ class mlp_wrapper(nn.Module):
 
 		If train_x is provided, use this to rescale the input. Specifically, compute mean/std
 		for non-categorical variables as train_x[:, self.non_categorical_indices, 0, 0].mean(dim=0).
+
+		para_index is a list of parameter indices that should be predicted by neural network. If None,
+		neural network predicts all parameters (as usual).
 		"""
 		super().__init__()
 
@@ -161,21 +165,26 @@ class mlp_wrapper(nn.Module):
 
 		# Setup categorical encoding
 		if self.one_hot:
-			# If one-hot, just calculate the input size
+			# If one-hot, just calculate the input size (after one-hot encoding)
 			for _, num_classes in self.var_idx_to_emb.items():
 				self.new_input_size += num_classes
 		else:
-			# Create ModuleDict so that all Embedding layers in var_idx_to_emb
-			# are registered as parameters
+			# If using Embedding layers, create ModuleDict so that all 
+			# Embedding layers in var_idx_to_emb are registered as parameters
 			self.var_idx_to_emb = nn.ModuleDict(self.var_idx_to_emb)
 			for _, emb in self.var_idx_to_emb.items():
 				self.new_input_size += emb.embedding_dim
 
-		# Number of parameters
-		if self.vertical_mixing == 'simple_two_intercepts':
-			self.num_params = 22
+		# Parameter indices that NN will predict (other parameters will be directly passed
+		# as "PRODA para")
+		if para_index is None:
+			if self.vertical_mixing == 'simple_two_intercepts':
+				self.para_index = np.arange(22)
+			else:
+				self.para_index = np.arange(21)
 		else:
-			self.num_params = 21
+			self.para_index = para_index
+		self.num_params = len(self.para_index)
 
 		# Standardize input to (mean 0, std 1) if desired
 		if train_x is not None:
@@ -195,7 +204,7 @@ class mlp_wrapper(nn.Module):
 				max_radius=360,
 				min_radius=1e-06,
 				freq_init="geometric",
-				ffn=True,  # TODO True # Enable feedforward network for final spatial embeddings
+				ffn=True,  # Enable feedforward network for final spatial embeddings
 			)
 			self.new_input_size += 128  # Add the spatial embeddings
 		elif pos_enc == "late":
@@ -206,25 +215,29 @@ class mlp_wrapper(nn.Module):
 				max_radius=360,
 				min_radius=1e-06,
 				freq_init="geometric",
-				ffn=True,  # TODO True # Enable feedforward network for final spatial embeddings
+				ffn=True,  # Enable feedforward network for final spatial embeddings
 			)
+			self.new_input_size += self.num_params  # Add the spatial embeddings
 
-		# MLP backbone
+		# Neural network: mapping input features to biogeochemical parameters
 		if lipschitz:
-			self.mlp = lipmlp((self.new_input_size, width, width, self.num_params),
+			# EXPERIMENTAL: LipMLP (Lipschitz-regularized neural network)
+			self.mlp = lipmlp((self.new_input_size, width, width, width, self.num_params),
 							   use_bn=use_bn, dropout_prob=dropout_prob)  # TODO different initialization methods, leaky relu, dropout, etc. not supported
 		else:
-			self.mlp = mlp((self.new_input_size, width, width, self.num_params),  # TEMP TODO @joshuafan, 256, 256
-							  use_bn=use_bn, dropout_prob=dropout_prob, leaky_relu=leaky_relu, init=init)
+			self.mlp = mlp((self.new_input_size, width, width, width, self.num_params),
+							  use_bn=use_bn, dropout_prob=dropout_prob, activation=activation, init=init)
 
-		# sigmoid parameter
+		# Parameter constraint
+		self.sigmoid = nn.Sigmoid()
+
+		# If using sigmoid: the "temperature" we divide by before the sigmoid
 		self.temp_sigmoid = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 		self.min_temp = min_temp
 		self.max_temp = max_temp
-		self.sigmoid = nn.Sigmoid()
 
 
-	def forward(self, input_var, wosis_depth, coords, whether_predict):
+	def forward(self, input_var, wosis_depth, coords, whether_predict, PRODA_para=None):
 		predictor = input_var[:, :, 0, 0]
 		forcing = input_var[:, :, :, :]
 		obs_depth = wosis_depth
@@ -237,7 +250,7 @@ class mlp_wrapper(nn.Module):
 		for idx, embedding_layer in self.var_idx_to_emb.items():
 			idx = int(idx)
 			if self.one_hot:
-				emb = 0.1*F.one_hot(predictor[:, idx].long(), num_classes=embedding_layer)  # if one_hot, "embedding_layer" is simply the number of classes
+				emb = F.one_hot(predictor[:, idx].long(), num_classes=embedding_layer)  # if one_hot, "embedding_layer" is simply the number of classes
 			else:
 				emb = embedding_layer(predictor[:, idx].int())
 				emb = F.normalize(emb, p=2, dim=1)  # New @joshuafan: normalize embeddings. TODO Reconsider this
@@ -262,7 +275,7 @@ class mlp_wrapper(nn.Module):
 			print("new_input was nan", new_input)
 			exit(1)
 
-		# Pass through MLP
+		# Pass through MLP to obtain (unconstrained) biogeochemical parameters
 		self.new_input = new_input
 		mlp_output = self.mlp(new_input)
 
@@ -272,15 +285,27 @@ class mlp_wrapper(nn.Module):
 			exit(1)
 
 		# Clamp temp_sigmoid to be within a range
-		clamped_temp_sigmoid = self.min_temp + (self.max_temp - self.min_temp) * self.sigmoid(self.temp_sigmoid)  # 10 + 90*self.sigmoid(self.temp_sigmoid)   #10 + 99 * self.sigmoid(self.temp_sigmoid) # try with a smaller range
+		clamped_temp_sigmoid = self.min_temp + (self.max_temp - self.min_temp) * F.sigmoid(self.temp_sigmoid)  # 10 + 90*self.sigmoid(self.temp_sigmoid)   #10 + 99 * self.sigmoid(self.temp_sigmoid) # try with a smaller range
 
 		# Positional encoder correction (if using)
 		if self.pos_enc == "late":
-			spatial_embeddings = self.spatial_encoder(coords).squeeze(1) # Remove the channel dimension. [batch, params]
+			spatial_embeddings = self.spatial_encoder(coords).squeeze(1)  # Remove the channel dimension. [batch, params]
 			mlp_output += spatial_embeddings
 
-		# Pass parameters through sigmoid to constrain their range
-		predicted_para = self.sigmoid(mlp_output / clamped_temp_sigmoid)
+		# Pass biogeochemical parameters through sigmoid, constraining them between [0, 1]
+		self.unconstrained_params = mlp_output / clamped_temp_sigmoid
+		constrained_params = self.sigmoid(self.unconstrained_params)
+		if PRODA_para is None:
+			 # If PRODA parameters not provided, neural network must output all params
+			if self.vertical_mixing == 'simple_two_intercepts':
+				assert np.array_equal(self.para_index, np.arange(22))
+			else:
+				assert np.array_equal(self.para_index, np.arange(21))
+			predicted_para = constrained_params
+		else:
+			# Initialize predicted parameters to PRODA parameters; then overwrite some with NN predictions
+			predicted_para = PRODA_para
+			predicted_para[:, self.para_index] = constrained_params
 
 		# check if h5 is nan
 		if torch.isnan(predicted_para).any() or torch.isinf(predicted_para).any():
@@ -303,7 +328,7 @@ class mlp_wrapper(nn.Module):
 class nn_only(nn.Module):
 	def __init__(self, input_vars, var_idx_to_emb, pos_enc, output_dim=140,
 				 lipschitz=False, one_hot=False, use_bn=False, dropout_prob=0.0,
-				 leaky_relu=False, output_mean=None, output_std=None, train_x=None,
+				 activation="relu", output_mean=None, output_std=None, train_x=None,
 				 init="xavier_uniform", width=128):
 		"""
 		var_idx_to_emb is a dictionary mapping from categorical variable index to either
@@ -338,7 +363,7 @@ class nn_only(nn.Module):
 				self.new_input_size += emb.embedding_dim
 
 		# Number of parameters (totally fake)
-		self.num_params = 22
+		self.num_params = 21
 
 		# Standardize input to (mean 0, std 1) if desired
 		if train_x is not None:
@@ -362,7 +387,7 @@ class nn_only(nn.Module):
 				max_radius=360,
 				min_radius=1e-06,
 				freq_init="geometric",
-				ffn=True,  # TODO True # Enable feedforward network for final spatial embeddings
+				ffn=True,  # Enable feedforward network for final spatial embeddings
 			)
 			self.new_input_size += 128  # Add the spatial embeddings
 		elif pos_enc == "late":
@@ -373,17 +398,18 @@ class nn_only(nn.Module):
 				max_radius=360,
 				min_radius=1e-06,
 				freq_init="geometric",
-				ffn=True,  # TODO True # Enable feedforward network for final spatial embeddings
+				ffn=True,  # Enable feedforward network for final spatial embeddings
 			)
 
 		# MLP backbone
 		if lipschitz:
-			self.mlp = lipmlp((self.new_input_size, width, width, self.num_params),
+			self.mlp = lipmlp((self.new_input_size, width, width, width, self.num_params),
 							   use_bn=use_bn, dropout_prob=dropout_prob)  # TODO different initialization methods, leaky relu, dropout, etc. not supported
 		else:
-			self.mlp = mlp((self.new_input_size, width, width, self.num_params),
-							use_bn=use_bn, dropout_prob=dropout_prob, leaky_relu=leaky_relu, init=init)
-		
+			self.mlp = mlp((self.new_input_size, width, width, width, self.num_params),
+							use_bn=use_bn, dropout_prob=dropout_prob, activation=activation, init=init)
+		self.act = get_activation(activation)
+
 		# Final layer: "params" -> SOC pools
 		self.final_layer = nn.Linear(self.num_params, self.output_dim)
 		if init == "xavier_uniform":
@@ -411,7 +437,7 @@ class nn_only(nn.Module):
 		for idx, embedding_layer in self.var_idx_to_emb.items():
 			idx = int(idx)
 			if self.one_hot:
-				emb = 0.1*F.one_hot(predictor[:, idx].long(), num_classes=embedding_layer)  # if one_hot, "embedding_layer" is simply the number of classes
+				emb = F.one_hot(predictor[:, idx].long(), num_classes=embedding_layer)  # if one_hot, "embedding_layer" is simply the number of classes
 			else:
 				emb = embedding_layer(predictor[:, idx].int())
 				emb = F.normalize(emb, p=2, dim=1)  # New @joshuafan: normalize embeddings
@@ -442,7 +468,7 @@ class nn_only(nn.Module):
 		# Pass through MLP to get fake pred_para
 		self.new_input = new_input
 		pred_para = self.mlp(new_input)
-		pred_output = self.final_layer(F.relu(pred_para))
+		pred_output = self.final_layer(self.act(pred_para))
 		if self.output_mean is not None and self.output_std is not None:
 			pred_output = pred_output * self.output_std + self.output_mean
 

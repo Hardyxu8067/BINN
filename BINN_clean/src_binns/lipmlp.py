@@ -1,5 +1,5 @@
 """
-Code from https://github.com/whitneychiu/lipmlp_pytorch/blob/main/models/lipmlp.py
+EXPERIMENTAL. Code from https://github.com/whitneychiu/lipmlp_pytorch/blob/main/models/lipmlp.py
 
 Re-implements the Lipschitz regularization in the paper "Learning Smooth Neural Functions 
 via Lipschitz Regularization" (Liu et al., SIGGRAPH 2022)

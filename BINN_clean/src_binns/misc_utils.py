@@ -236,5 +236,17 @@ class Logger(object):
 		# this flush method is needed for python 3 compatibility.
 		# this handles the flush command by doing nothing.
 		# you might want to specify some extra behavior here.
-		pass    
+		pass
+
+
+def get_activation(activation):
+	if activation == 'relu':
+		return torch.nn.ReLU()
+	elif activation == 'leaky_relu':
+		return torch.nn.LeakyReLU(negative_slope=0.3)
+	elif activation == 'tanh':
+		return torch.nn.Tanh()
+	else:
+		raise ValueError("Unsupported activation")
+	return act
 

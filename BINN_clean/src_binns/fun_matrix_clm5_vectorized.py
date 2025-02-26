@@ -5,14 +5,12 @@ import traceback
 import math
 
 
-def fun_model_simu(tensor_para, tensor_frocing_steady_state, tensor_obs_layer_depth, vertical_mixing, vectorized='true'):
+def fun_model_simu(tensor_para, tensor_frocing_steady_state, tensor_obs_layer_depth, vertical_mixing, vectorized='yes'):
 	"""
-	Simulate the soil carbon profile using the CLM5 model at the depth of the observations
+	Simulate the soil carbon profile using the CLM5 model at the specified observation depths in 'tensor_obs_layer_depth'
 	"""
 	device = tensor_para.device
-	# convert tensor to numpy
 	para = tensor_para
-	# para = (tensor_para - (-1)) /(1 - (-1)) # conversion from Hardttanh [-1, 1] to [0, 1]
 	frocing_steady_state = tensor_frocing_steady_state 
 	obs_layer_depth = tensor_obs_layer_depth
 
@@ -30,7 +28,7 @@ def fun_model_simu(tensor_para, tensor_frocing_steady_state, tensor_obs_layer_de
 
 	n_soil_layer = 20
 
-	# final ouputs of simulation
+	# Initialize final outputs of simulation
 	profile_num = para.shape[0]
 	simu_ouput = (torch.ones((profile_num, 200))*np.nan).to(device)
 	# calculate soc solution for each profile
@@ -82,7 +80,7 @@ def fun_model_simu(tensor_para, tensor_frocing_steady_state, tensor_obs_layer_de
 	
 # end def fun_model_simu
 
-def fun_model_prediction(tensor_para, tensor_frocing_steady_state, vertical_mixing, vectorized='true'):
+def fun_model_prediction(tensor_para, tensor_frocing_steady_state, vertical_mixing, vectorized='yes'):
 	"""
 	Predict soil carbon profiles using the CLM5 model, at the 20 fixed CLM5 layers
 	"""
@@ -129,7 +127,7 @@ def fun_model_prediction(tensor_para, tensor_frocing_steady_state, vertical_mixi
 	return simu_ouput
 
 # Sensitivity analysis of the soil carbon profile using the CLM5 model
-def fun_model_sensitivity(tensor_para, tensor_frocing_steady_state, vertical_mixing, vectorized='true'):
+def fun_model_sensitivity(tensor_para, tensor_frocing_steady_state, vertical_mixing, vectorized='yes'):
 	device = tensor_para.device
 	# convert tensor to numpy
 	para = tensor_para
@@ -187,7 +185,7 @@ def fun_model_sensitivity(tensor_para, tensor_frocing_steady_state, vertical_mix
 #######################################################
 # forward simulation for clm5
 #######################################################
-def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='true'):
+def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='yes'):
 	device = para.device
 	#---------------------------------------------------
 	# offical starting simulation
@@ -295,7 +293,7 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 		# cryoturbation 5*10^(-4) (m2/yr)
 		cryo = para[1]*(16*1e-4 - 3*1e-5) + 3*1e-5
 	else:
-		# use the alternative tri-matrix
+		# use the simple alternative tri-matrix
 		slope = para[0]*((0) - (-3)) + (-3)  # increase, decrease, or no change of diffusion rate with depth
 		# intercept = para[1]*((-6) - (-10)) + (-10)
 		intercept = para[1]*((-2) - (-12)) + (-12)
@@ -372,7 +370,7 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 	xio = xio_steady_state
 	xin = xin_steady_state
 
-	if vectorized in ['false', 'compare']:  # Old way of calculating xit
+	if vectorized in ['no', 'compare']:  # Old way of calculating xit
 		xit_old = (torch.ones(n_soil_layer, timestep_num)*np.nan).to(device)
 		for itimestep in range(timestep_num):
 			# temperature related function xit
@@ -395,7 +393,7 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 				xit_old[:, itimestep] = xit_old[:, itimestep]*normalization_factor
 		xit = xit_old
 
-	if vectorized in ['true', 'compare']:  # New way to calculate xit (vectorized))
+	if vectorized in ['yes', 'compare']:  # New way to calculate xit (vectorized))
 		xit_above_freezing = torch.pow(q10, ((soil_temp_profile_steady_state - (kelvin_to_celsius + 25))/10))  # Above freezing case first
 		xit_below_freezing = torch.pow(q10, ((273.15 - 298.15)/10)) * torch.pow(fq10, ((soil_temp_profile_steady_state - (0 + kelvin_to_celsius))/10))	
 		freezing_mask = (soil_temp_profile_steady_state < (0 + kelvin_to_celsius)).detach().int()  # Create a mask which is True when the soil temperatue is below freezing
@@ -406,7 +404,6 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 			# scale all decomposition rates by a constant to compensate for offset between original CENTURY temp func and Q10
 			normalization_factor = (catanf(normalization_tref)/catanf_30) / (q10**((normalization_tref-25)/10))
 			xit = xit * normalization_factor
-	
 	if vectorized == 'compare':
 		assert(torch.allclose(xit_old, xit))
 
@@ -418,12 +415,12 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 	#---------------------------------------------------
 	sand_vector = torch.mean(sand_vector_steady_state, axis = 1)
 
-	# allocation matrix
-	if vectorized in ['false', 'compare']:
+	# allocation matrix (horizontal transfers within same layer)
+	if vectorized in ['no', 'compare']:
 		# a_ma_old_start = time.time()
 		a_ma = a_ma_old = a_matrix(fl1s1, fl2s1, fl3s2, fs1s2, fs1s3, fs2s1, fs2s3, fs3s1, fcwdl2, sand_vector)
 		# a_ma_old_time = time.time() - a_ma_old_start
-	if vectorized in ['true', 'compare']:
+	if vectorized in ['yes', 'compare']:
 		# a_ma_new_start = time.time()
 		a_ma = a_matrix_vectorized(fl1s1, fl2s1, fl3s2, fs1s2, fs1s3, fs2s1, fs2s3, fs3s1, fcwdl2, sand_vector)
 		# a_ma_new_time = time.time() - a_ma_new_start
@@ -442,9 +439,9 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 		timesteply_xin = xin[:, itimestep]
 
 		# K matrix
-		if vectorized in ['false', 'compare']:
+		if vectorized in ['no', 'compare']:
 			kk_ma = kk_ma_old = kk_matrix(timesteply_xit, timesteply_xiw, timesteply_xio, timesteply_xin, efolding, tau4cwd, tau4l1, tau4l2, tau4l3, tau4s1, tau4s2, tau4s3)
-		if vectorized in ['true', 'compare']:
+		if vectorized in ['yes', 'compare']:
 			kk_ma = kk_matrix_vectorized(timesteply_xit, timesteply_xiw, timesteply_xio, timesteply_xin, efolding, tau4cwd, tau4l1, tau4l2, tau4l3, tau4s1, tau4s2, tau4s3)
 		if vectorized in 'compare':
 			assert torch.allclose(kk_ma_old, kk_ma)
@@ -456,26 +453,31 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 		timesteply_altmax_lastyear_profile = altmax_lastyear_profile_steady_state[itimestep]
 
 		if vertical_mixing == 'original':
-			if vectorized in ['false', 'compare']:
-				tri_ma_old_start = time.time()
+			if vectorized in ['no', 'compare']:
+				# tri_ma_old_start = time.time()
 				tri_ma = tri_ma_old = tri_matrix_old(timesteply_nbedrock, timesteply_altmax_current_profile, timesteply_altmax_lastyear_profile, bio, adv, cryo)
-				tri_ma_old_time = time.time() - tri_ma_old_start
-			if vectorized in ['true', 'compare']:
-				tri_ma_new_start = time.time()
+				# tri_ma_old_time = time.time() - tri_ma_old_start
+			if vectorized in ['yes', 'compare']:
+				# tri_ma_new_start = time.time()
 				tri_ma = tri_matrix_old_improved(timesteply_nbedrock, timesteply_altmax_current_profile, timesteply_altmax_lastyear_profile, bio, adv, cryo)
-				tri_ma_new_time = time.time() - tri_ma_new_start
+				# tri_ma_new_time = time.time() - tri_ma_new_start
 		else:
-			if vectorized in ['false', 'compare']:
+			if vectorized in ['no', 'compare']:
 				assert vertical_mixing == 'simple_one_intercept'  # For non-vectorized tri_matrix_alternative, only one intercept is supported
 				tri_ma = tri_ma_old = tri_matrix_alternative(timesteply_nbedrock, slope, intercept, device)
-			if vectorized in ['true', 'compare']:
+			if vectorized in ['yes', 'compare']:
 				tri_ma = tri_matrix_alternative_vectorized(timesteply_nbedrock, slope, intercept, intercept_leach, device)
-		# if vectorized == 'compare':
-		# 	# TODO: the tri_ma implementations may give slightly different results?
-		# 	print("Tri ma old", tri_ma_old)
-		# 	print("Tri ma new", tri_ma)
-		# 	assert torch.allclose(tri_ma_old, tri_ma)
-		# 	print("TRI MATRIX. OLD", tri_ma_old_time, "NEW", tri_ma_new_time)
+		if vectorized == 'compare':
+			# Check that both tri_matrix methods produce same result, and that
+			# all entries outside the middle 3 diagonals are zero
+			assert torch.allclose(tri_ma_old, tri_ma)
+			tridiag_mask = torch.zeros((140, 140)).bool()
+			for p in range(20, 140, 20):  # pool start
+				tridiag_mask[torch.arange(p, p+20), torch.arange(p, p+20)] = True
+				tridiag_mask[torch.arange(p, p+19), torch.arange(p+1, p+20)] = True
+				tridiag_mask[torch.arange(p+1, p+20), torch.arange(p, p+19)] = True
+			assert torch.all(tri_ma[~tridiag_mask] == 0.0)
+			assert torch.all(tri_ma[tridiag_mask] != 0.0)
 		tri_ma_middle[:, :, itimestep] = tri_ma
 
 	# end for itimestep
@@ -490,7 +492,7 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 
 	vertical_prof = (torch.ones(n_soil_layer)*np.nan).to(device) 
 	if torch.mean(altmax_lastyear_profile_steady_state) > 0:
-		if vectorized in ['false', 'compare']:
+		if vectorized in ['no', 'compare']:
 			# Old way of calculating vertical_prof
 			vertical_prof_old = (torch.ones(n_soil_layer)*np.nan).to(device) 
 			for j in range(n_soil_layer): #1:n_soil_layer
@@ -501,7 +503,7 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 				# end j == 0:
 			# end for j in range(n_soil_layer):
 			vertical_prof = vertical_prof_old
-		if vectorized in ['true', 'compare']:
+		if vectorized in ['yes', 'compare']:
 			# New way to calculate vertical_prof (vectorized)
 			vertical_prof = (torch.ones(n_soil_layer)*np.nan).to(device) 
 			vertical_prof[0] = (beta**((zisoi_0)*m_to_cm) - beta**(zisoi[0]*m_to_cm))/dz[0]
@@ -564,7 +566,6 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='tru
 			print("matrix_in contains nan")
 		if torch.det(torch.matmul(a_ma, kk_ma)-tri_ma) == 0:
 			print("a_ma*kk_ma - tri_ma is singular")
-
 		cpool_steady_state = (torch.ones([140, 1])*(-1.0)).to(device)*torch.sum(para)/torch.sum(para)
 	# end try
 
@@ -638,7 +639,6 @@ def a_matrix_vectorized(fl1s1, fl2s1, fl3s2, fs1s2, fs1s3, fs2s1, fs2s3, fs3s1, 
 	fill_submatrix_diagonal(a_ma_vr, nlevdecomp, 7, 5, transfer_fraction[4])
 	fill_submatrix_diagonal(a_ma_vr, nlevdecomp, 7, 6, transfer_fraction[6])
 	return a_ma_vr
-
 
 
 def kk_matrix(xit, xiw, xio, xin, efolding, tau4cwd, tau4l1, tau4l2, tau4l3, tau4s1, tau4s2, tau4s3):
@@ -769,9 +769,10 @@ def tri_matrix_alternative_vectorized(nbedrock, slope, intercept, intercept_leac
 	
 	return tri_ma
 
+
 # Import the improved code
 def tri_matrix_old_improved(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, cryoturb_diffusion_k):
-	
+
 	device = nbedrock.device
 
 	nlevdecomp = n_soil_layer
@@ -892,7 +893,12 @@ def tri_matrix_old_improved(nbedrock, altmax, altmax_lastyear, som_diffus, som_a
 	# d_m1_zm1[1:] = torch.where(inner_layers, 1. / ((1. - w_m1[1:]) / diffus[1:] + w_m1[1:] / diffus[:-1]), 0.)
 	# d_p1_zp1[:-1] = torch.where(inner_layers, 1. / ((1. - w_p1[:-1]) / diffus[:-1] + w_p1[:-1] / diffus[1:]), (1. - w_m1[:-1]) * diffus[:-1] + w_p1[:-1] * diffus[1:])
 	d_m1_zm1 = torch.cat([d_m1_zm1[:1], torch.where(inner_layers, 1. / ((1. - w_m1[1:]) / diffus[1:] + w_m1[1:] / diffus[:-1]), torch.zeros_like(d_m1_zm1[1:]))])
-	d_p1_zp1_temp = torch.where(inner_layers, 1. / ((1. - w_p1[:-1]) / diffus[:-1] + w_p1[:-1] / diffus[1:]), (1. - w_m1[:-1]) * diffus[:-1] + w_p1[:-1] * diffus[1:])
+
+	# Original line:
+	# d_p1_zp1_temp = torch.where(inner_layers, 1. / ((1. - w_p1[:-1]) / diffus[:-1] + w_p1[:-1] / diffus[1:]), (1. - w_m1[:-1]) * diffus[:-1] + w_p1[:-1] * diffus[1:])
+
+	# Fixed line:
+	d_p1_zp1_temp = torch.where(inner_layers, 1. / ((1. - w_p1[:-1]) / diffus[:-1] + w_p1[:-1] / diffus[1:]), (1. - w_p1[:-1]) * diffus[:-1] + w_p1[:-1] * diffus[1:])  # NOTE: Replaced 1-w_m1 with 1-w_p1, I believe this was a typo in the original Fortran code.
 	d_p1_zp1 = torch.cat([d_p1_zp1_temp, d_p1_zp1[-1:]])
 
 	# Adjust for dz_node scaling
@@ -900,7 +906,6 @@ def tri_matrix_old_improved(nbedrock, altmax, altmax_lastyear, som_diffus, som_a
 	d_p1_zp1[:-1] /= dz_node[:nlevdecomp+1][1:]
 
 	# print("d_p1_zp1", d_p1_zp1)
-
 
 	# Layer lower than nbedrock-1: d_p1_zp1 = d_m1_zm1
 	
@@ -915,7 +920,6 @@ def tri_matrix_old_improved(nbedrock, altmax, altmax_lastyear, som_diffus, som_a
 
 	d_m1_zm1= torch.cat([d_m1_zm1[:-1], d_m1_zm1_bottom.unsqueeze(0)])
 	d_p1_zp1 = torch.cat([d_p1_zp1[:nbedrock], d_m1_zm1[nbedrock:]])
-
 
 	# d_p1_zp1[nbedrock-1:] = d_m1_zm1[nbedrock-1:]
 	# # No advective flux for the layer between nbedrock and nlevdecomp
@@ -946,8 +950,8 @@ def tri_matrix_old_improved(nbedrock, altmax, altmax_lastyear, som_diffus, som_a
 
 
 	# Peclet numbers
-	pe_m1 = torch.where(d_m1_zm1 == 0, torch.zeros_like(f_m1), f_m1 / (d_m1_zm1 + epsilon))
-	pe_p1 = torch.where(d_p1_zp1 == 0, torch.zeros_like(f_p1), f_p1 / (d_p1_zp1 + epsilon))
+	pe_m1 = torch.where(d_m1_zm1 == 0, torch.zeros_like(f_m1), f_m1 / (d_m1_zm1))  # NOTE + epsilon))
+	pe_p1 = torch.where(d_p1_zp1 == 0, torch.zeros_like(f_p1), f_p1 / (d_p1_zp1))  # NOTE + epsilon))
 
 	# Pre-compute the 'aaa' values for Patankar functions
 	aaa_m = torch.maximum(torch.zeros_like(pe_m1), (1. - 0.1 * pe_m1.abs())**5)
@@ -1030,14 +1034,15 @@ def tri_matrix_old_improved(nbedrock, altmax, altmax_lastyear, som_diffus, som_a
 	bottom_boundary_indices = torch.arange(39, 140, 20)
 	tri_ma[bottom_boundary_indices, bottom_boundary_indices] = -expanded_a[bottom_boundary_indices]
 
-	# Fill off-diagonals for c_tri_dz
-	off_diag_indices_right = torch.arange(19, 139)  # Right off-diagonal
-	tri_ma[torch.arange(19, 139), torch.arange(20, 140)] = expanded_c[off_diag_indices_right]
-	
+	# Fill right off-diagonal with c_tri_dz
+	# off_diag_indices_right = torch.arange(19, 139)  # Right off-diagonal
+	# tri_ma[torch.arange(19, 139), torch.arange(20, 140)] = expanded_c[off_diag_indices_right]
+	tri_ma[torch.arange(20, 139), torch.arange(21, 140)] = expanded_c[torch.arange(20, 139)]  # NOTE changed
 
 	# Fill off-diagonals for a_tri_dz
-	off_diag_indices_left = torch.arange(20, 140)  # Left off-diagonal
-	tri_ma[torch.arange(20, 140), torch.arange(19, 139)] = expanded_a[off_diag_indices_left]
+	#off_diag_indices_left = torch.arange(20, 140)  # Left off-diagonal
+	#tri_ma[torch.arange(20, 140), torch.arange(19, 139)] = expanded_a[off_diag_indices_left]
+	tri_ma[torch.arange(21, 140), torch.arange(20, 139)] = expanded_a[torch.arange(21, 140)]  # NOTE changed
 
 	# Adjust for upper boundary conditions across blocks
 	tri_ma[upper_boundary_indices, upper_boundary_indices-1] = 0
@@ -1176,8 +1181,8 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 		else:
 			diffus[j] = som_diffus_coef[j]
 		# end if abs(som_diffus_coef[j])  < epsilon:
-		
-		
+
+	for j in range(nlevdecomp+1):  # NOTE changed so all diffus get calculated above
 		# Calculate the D and F terms in the Patankar algorithm
 		if j == 0:
 			d_m1_zm1[j] = 0.
@@ -1193,9 +1198,10 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 			d_p1_zp1[j] = d_p1_zp1[j] / dz_node[j+1]
 			f_m1[j] = adv_flux[j]  # Include infiltration here
 			f_p1[j] = adv_flux[j+1]
+
 			# pe_m1[j] = 0.
 			# pe_p1[j] = f_p1[j].clone() / d_p1_zp1[j] # Peclet #
-		elif j >= nbedrock-1:
+		elif j >= nbedrock:  # NOTE used to be nbedrock-1:
 			# At the bottom, assume no gradient in d_z (i.e., they're the same)
 			w_m1[j] = (zisoi[j-1] - zsoi[j-1]) / dz_node[j]
 			w_p1[j] = 0.
@@ -1211,6 +1217,7 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 			f_m1[j] = adv_flux[j]
 			# f_p1(j) = adv_flux(j+1)
 			f_p1[j] = 0.
+
 			# pe_m1[j] = f_m1[j].clone() / d_m1_zm1[j] # Peclet #
 			# pe_p1[j] = f_p1[j].clone() / d_p1_zp1[j] # Peclet #
 		else:
@@ -1227,7 +1234,7 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 			if diffus[j+1] > 0. and diffus[j] > 0.:
 				d_p1_zp1[j] = 1. / ((1. - w_p1[j].clone()) / diffus[j].clone() + w_p1[j].clone() / diffus[j+1].clone()) # Harmonic mean of diffus
 			else:
-				d_p1_zp1[j] = (1. - w_m1[j].clone()) * diffus[j].clone() + w_p1[j].clone() * diffus[j+1].clone() # Arithmetic mean of diffus
+				d_p1_zp1[j] = (1. - w_p1[j].clone()) * diffus[j].clone() + w_p1[j].clone() * diffus[j+1].clone() # Arithmetic mean of diffus.  NOTE: Replaced 1-w_m1 with 1-w_p1, I believe this was a typo in the original Fortran code.
 			# end if diffus[j+1] > 0. and diffus[j] > 0.:
 			
 			d_m1_zm1[j] = d_m1_zm1[j] / dz_node[j]
@@ -1238,7 +1245,7 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 			# pe_p1[j] = f_p1[j].clone() / d_p1_zp1[j] # Peclet #
 		# end j == 0:
 	# end for j in range(nlevdecomp+1): 
-	
+
 	# Peclet #
 	for j in range(nlevdecomp+1):
 		if d_m1_zm1[j] == 0.:
@@ -1286,7 +1293,7 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 		b_tri_dz[j] = b_tri_e[j] / dz[j]
 		c_tri_dz[j] = c_tri_e[j] / dz[j]
 	# end for j in range(nlevdecomp):
-	
+
 
 	for i in range(1, npool):
 		start_idx = i * nlevdecomp
@@ -1298,7 +1305,7 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 
 		# Upper boundary condition adjustment
 		if nlevdecomp > 1:
-			tri_ma[start_idx, start_idx] = -c_tri_dz[1]
+			tri_ma[start_idx, start_idx] = -c_tri_dz[0]   # NOTE used to be -c_tri_dz[1]
 
 
 		# Bottom boundary condition adjustment
@@ -1312,7 +1319,7 @@ def tri_matrix_old(nbedrock, altmax, altmax_lastyear, som_diffus, som_adv_flux, 
 
 			tri_ma[diag_indices[:-1], upper_diag_indices] = c_tri_dz[:-1]
 			tri_ma[diag_indices[1:], lower_diag_indices] = a_tri_dz[1:]
-	
+
 	return tri_ma
 
 # end def tri_matrix
@@ -1321,6 +1328,3 @@ def catanf(t1):
 	catanf_results = 11.75 +(29.7 / np.pi) * torch.arctan( torch.tensor(np.pi) * 0.031  * ( t1 - 15.4 ))
 	return catanf_results
 # end def catanf
-
-
-
