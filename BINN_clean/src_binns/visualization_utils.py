@@ -191,10 +191,10 @@ def plot_observations_world_map(lons, lats, values, plot_dir, var_name, title=No
 
     # Plot world map
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.lon, df.lat))
-    world = gpd.read_file("../INPUT_DATA/maps/naturalearth/ne_50m_admin_0_countries.shp")  # Formerly gpd.datasets.get_path('naturalearth_lowres'))
+    world = gpd.read_file("../../ENSEMBLE/INPUT_DATA/maps/naturalearth/ne_50m_admin_0_countries.shp")  # Formerly gpd.datasets.get_path('naturalearth_lowres'))
     world.plot(ax=ax, color='gray')  # world.boundary.plot(ax=ax, color='gray')
     if us_only:
-        states = gpd.read_file("../INPUT_DATA/maps/naturalearth/ne_50m_admin_1_states_provinces_lines.shp")
+        states = gpd.read_file("../../ENSEMBLE/INPUT_DATA/maps/naturalearth/ne_50m_admin_1_states_provinces_lines.shp")
         states.plot(ax=ax, color='gray')
         ax.set_xlim(-124.8, -66.9)
         ax.set_ylim(24.5, 49.4)

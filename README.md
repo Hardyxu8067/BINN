@@ -58,6 +58,8 @@ chmod +x run_binn.sh  # If execute permission not enabled
 
 The script `BINN_clean/src_binns/run_binn_slurm.sh` contains an example of how to train on 4 GPUs on a server with the Slurm scheduler.
 
+The script `BINN_clean/src_binns/run_retrieval.sh` runs the retrieval test described in the BINN paper. NOT FULLY TESTED YET.
+
 ## Code summary
 
 * `src_binns/run_binn_interactive.sh`: contains command to run BINN training. Change `--num_CPU` to the number of GPUs, or CPUs if no GPUs are available.

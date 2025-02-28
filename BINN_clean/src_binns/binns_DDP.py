@@ -624,7 +624,7 @@ for group in categorical_vars:
 		idx = env_info_names.index(var)
 		col_max_min[idx, :] = np.nan
 
-# warnings.filterwarnings("error")
+warnings.filterwarnings("ignore")  # Ignore warnings about subtracting nan
 for ivar in np.arange(3, len(col_max_min[:, 0])):
 	if np.isnan(col_max_min[ivar, :]).any():
 		pass
@@ -632,6 +632,8 @@ for ivar in np.arange(3, len(col_max_min[:, 0])):
 		env_info[:, ivar] = (env_info[:, ivar] - col_max_min[ivar, 0])/(col_max_min[ivar, 1] - col_max_min[ivar, 0])
 		env_info[(env_info[:, ivar] > 1), ivar] = 1
 		env_info[(env_info[:, ivar] < 0), ivar] = 0
+warnings.resetwarnings()
+
 
 env_info = df(env_info)
 env_info.columns = env_info_names
@@ -752,9 +754,9 @@ if args.synthetic_labels:
 		current_PRODA_para_simu = current_PRODA_para[i, :]
 
 		# Convert the data to tensor, reshape to shape [1, 60, 12, 13] and [1, 21]
-		current_data_x_simu = torch.tensor(current_data_x_simu, dtype=torch.float32).unsqueeze(0)
-		current_data_z_simu = torch.tensor(current_data_z_simu, dtype=torch.float32).unsqueeze(0)
-		current_PRODA_para_simu = torch.tensor(current_PRODA_para_simu, dtype=torch.float32).unsqueeze(0)
+		current_data_x_simu = torch.tensor(current_data_x_simu).unsqueeze(0)
+		current_data_z_simu = torch.tensor(current_data_z_simu).unsqueeze(0)
+		current_PRODA_para_simu = torch.tensor(current_PRODA_para_simu).unsqueeze(0)
 
 		# Run the simulation
 		PRODA_soc_simu[i, :] = fun_model_simu(current_PRODA_para_simu, current_data_x_simu, current_data_z_simu, args.vertical_mixing, args.vectorized)
@@ -1050,15 +1052,12 @@ grid_US_mask = (grid_env_info["original_lon"] >= -124.763068) \
 grid_US_profiles = np.where(grid_US_mask)[0]  # Indices (zero-based 'grid profile IDs') of grid cells in US, used later
 grid_env_info_US = grid_env_info[grid_US_mask]
 grid_env_info_num = grid_env_info_US.shape[0]
-print("Shape of grid env info (after dropping nans, selecting US):", grid_env_info_US.shape)
-
 
 # Check the max value of categorical variables, if it is larger than the number of categories, then remove the row
 for group in categorical_vars:
 	mask = grid_env_info_US[group].apply(lambda x: (x > np.max(env_info[group])).any(), axis=1)
 	indices_to_remove = grid_env_info_US[mask].index
 	grid_env_info_US = grid_env_info_US.drop(indices_to_remove)
-	print("Shape of grid env info after removing rows with categorical values larger than the number of categories in category {}: ".format(group), grid_env_info_US.shape)
 grid_env_info_num = grid_env_info_US.shape[0]
 
 # Include forcing data for the grid env info

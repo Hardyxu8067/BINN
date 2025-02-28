@@ -346,7 +346,7 @@ class GridCellSpatialRelationEncoder(nn.Module):
         """
         device = coords.device
         spr_embeds = self.make_input_embeds(coords)
-        spr_embeds = torch.tensor(spr_embeds, dtype=torch.float32).to(device)  # torch.FloatTensor(spr_embeds).to(device)  @joshuafan modified
+        spr_embeds = torch.tensor(spr_embeds).to(device)  # torch.FloatTensor(spr_embeds).to(device)  @joshuafan modified
         if self.ffn is not None:
             return self.ffn(spr_embeds)
         else:
