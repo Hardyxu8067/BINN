@@ -5,8 +5,7 @@ Prediction and Scientific Understanding of Soil Organic Carbon" (Xu et al. 2025)
 
 ## Installation Instructions
 
-You can follow these steps. The key packages to install are mat73, netCDF, PyTorch, PyTorch Geometric (including the optional dependencies).
-
+The key packages to install are PyTorch, PyTorch Geometric, Numpy, Scipy, Pandas, matplotlib, scikit-learn, geopandas, mat73, and netCDF4. Here are instructions to install the necessary packages:
 
 Create a virtual env called ".venv", and activate it
 ```
@@ -94,7 +93,7 @@ The script `BINN_clean/src_binns/run_retrieval.sh` runs the retrieval test descr
     - `kk_matrix`: 140x140 matrix. `KK[i, i]` is the decomposition rate for pool i. Nondiagonal entries are zero.
     - `tri_matrix`: 140x140 matrix, containing vertical transfers. `Tri[i, j]` (if `i != j`) is the flux from pool j to i. `Tri[i, i]` is the total flux leaving pool i. Only the three middle diagonals contain nonzero entries, meaning that there is only transfer between adjacent layers of the same pool type.
     - Each of these has a vectorized and non-vectorized implementation. They should produce the same result, vectorized is faster.
-* `src_binns/fun_matrix_clm5_vectorized_bulk.py` is similar to above, but also outputs additional quantities (various combinations of parameters) that are used in final visualizations
+* `src_binns/fun_matrix_clm5_vectorized_bulk_converge.py` is similar to above, but also outputs additional quantities (various combinations of parameters) that are used in final visualizations
 * `losses.py`: code for loss functions
 
 ## Data Notes

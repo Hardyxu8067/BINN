@@ -1,4 +1,6 @@
 # Reproducing the BINN paper: RETRIEVAL TEST
+
+# Small sample first
 for LR in 1e-2
 do
     for FOLD in 1
@@ -17,6 +19,7 @@ do
     done
 done
 
+# Full dataset
 for LR in 1e-2
 do
     for FOLD in 1
