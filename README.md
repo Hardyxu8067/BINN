@@ -81,6 +81,7 @@ The script `BINN_clean/src_binns/run_retrieval.sh` runs the retrieval test descr
     - `current_proda_para`: biogeochemical parameters predicted by the previous PRODA method, shape `[batch, num_parameters]`
     - Search `args.split` for the code that splits data into train/val/test.
     - `predict_data_*` is grid data, where we have input features (x), coordinates (c), and PRODA parameters, but no SOC observations. We use this to make nationwide predictions using a trained model.
+* `src_binns/sensitivity_test_par.py`: Python script for the sensitivity test of CLM5
 * `src_binns/mlp.py`: deep learning models
     - `mlp_wrapper` is "baseline BINN". Usage: `--model new_mlp`
         - MLP: maps input features → biogeochemical parameters
@@ -95,10 +96,11 @@ The script `BINN_clean/src_binns/run_retrieval.sh` runs the retrieval test descr
     - Each of these has a vectorized and non-vectorized implementation. They should produce the same result, vectorized is faster.
 * `src_binns/fun_matrix_clm5_vectorized_bulk_converge.py` is similar to above, but also outputs additional quantities (various combinations of parameters) that are used in final visualizations
 * `losses.py`: code for loss functions
+* `/post_training`: contains codes for reproducing figures in the manuscript
 
 ## Data Notes
 
-The covariates and biogeochemical parameters are listed in [this document](https://docs.google.com/document/d/1dAlGbuwKkIg7-ai9ZPGSKIP7rKdKj8mUQi29TObQlUI/edit?usp=sharing).
+The covariates and biogeochemical parameters are listed in [the manuscript](https://arxiv.org/abs/2502.00672).
 
 ## Additional tips
 
