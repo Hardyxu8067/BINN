@@ -36,8 +36,6 @@ from scipy.interpolate import pchip_interpolate
 
 print("Start binns_DDP")
 
-# Set default dtype to float64 to avoid underflow in process-based model.
-torch.set_default_dtype(torch.float64)
 
 # Temporary hack to avoid printing np.float64(...) when printing out numpy scalars.
 # TODO fix this
@@ -54,6 +52,10 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 import multiprocessing
 from multiprocessing import Process
+
+# Set default dtype to float64 to avoid underflow in process-based model.
+torch.set_default_dtype(torch.float64)
+
 from scipy.io import loadmat
 import netCDF4 as ncread 
 import mat73
@@ -189,14 +191,6 @@ job_begin_time = time.time()
 ################################################
 # Data Directories (CHANGE THIS!!!)
 ################################################
-# data_dir_input = '/Users/phoenix/Google_Drive/Tsinghua_Luo/Projects/DATAHUB/ENSEMBLE/INPUT_DATA/'
-# data_dir_output = '/Users/phoenix/Google_Drive/Tsinghua_Luo/Projects/DATAHUB/BINNS/OUTPUT_DATA/'
-# data_dir_input = 'C:/Users/hx293/Research_Data/BINN/ENSEMBLE/INPUT_DATA/'
-# data_dir_output = 'C:/Users/hx293/Unsync_Data/BINN_output/'
-# server path
-# job_submit_path = '/glade/u/home/haodixu/BINN/PBS_Submit/Bulk_Converge/'
-# data_dir_input = '/glade/u/home/haodixu/BINN/ENSEMBLE/INPUT_DATA/'
-# data_dir_output = '/glade/work/haodixu/BINN/BINNS/OUTPUT_DATA/'
 data_dir_input = '../../ENSEMBLE/INPUT_DATA/'
 data_dir_output = '../../OUTPUT_DATA/'
 job_submit_path = './resume_jobs/'
@@ -658,7 +652,7 @@ print("Var to categories", var_to_categories)
 # training data
 #---------------------------------------------------
 # Input features (environmental covariates)
-current_data_x = np.ones((len(profile_collection), len(var4nn), 12, 13))*np.nan
+current_data_x = np.ones((len(profile_collection), max(len(var4nn), 20), 12, 13))*np.nan
 
 # Fill in input features
 # NOTE: env_info is indexed starting from 0, and profile_collection
