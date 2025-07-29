@@ -5,7 +5,7 @@ Prediction and Scientific Understanding of Soil Organic Carbon" (Xu et al. 2025)
 
 ## Installation Instructions
 
-The key packages to install are PyTorch, PyTorch Geometric, Numpy, Scipy, Pandas, matplotlib, scikit-learn, geopandas, mat73, and netCDF4. Here are instructions to install the necessary packages:
+The key packages to install are PyTorch, PyTorch Geometric, Numpy, Scipy, Pandas, matplotlib, scikit-learn, geopandas, mat73, and netCDF4. The exact version numbers needed to reproduce our results are pinned in `requirements.txt`. Here are instructions to install the necessary packages:
 
 Create a virtual env called ".venv", and activate it
 ```
@@ -81,20 +81,20 @@ The script `BINN_clean/src_binns/run_retrieval.sh` runs the retrieval test descr
     - `current_proda_para`: biogeochemical parameters predicted by the previous PRODA method, shape `[batch, num_parameters]`
     - Search `args.split` for the code that splits data into train/val/test.
     - `predict_data_*` is grid data, where we have input features (x), coordinates (c), and PRODA parameters, but no SOC observations. We use this to make nationwide predictions using a trained model.
-* `src_binns/sensitivity_test_par.py`: Python script for the sensitivity test of CLM5
-* `src_binns/mlp.py`: deep learning models
+* `src_binns/mlp.py`: deep learning models in BINN
     - `mlp_wrapper` is "baseline BINN". Usage: `--model new_mlp`
         - MLP: maps input features → biogeochemical parameters
         - Process-based model: maps biogeochemical parameters + forcing → SOC predictions at 20 depths
     - `nn_only` is pure-neural network without the process-based model. Usage: `--model nn_only`
         - Directly maps input features → SOC predictions at 20 depths
-* `src_binns/fun_matrix_clm5_vectorized.py`: process-based model
+* `src_binns/fun_matrix_clm5_vectorized.py`: process-based model (CLM5) embedded in BINN. In this script, we reconstruct the soil organic carbon module of CLM5 into matrix form using Pytorch. 
     - Estimates amount of carbon in 140 pools (20 depths * 7 pools per layer)
     - `a_matrix`: 140x140 matrix, containing horizontal transfers between pools of the same layer. `A[i, j]` (if `i != j`) is the flux from pool j to i. `A[i, i]` is the total flux leaving pool i.
     - `kk_matrix`: 140x140 matrix. `KK[i, i]` is the decomposition rate for pool i. Nondiagonal entries are zero.
     - `tri_matrix`: 140x140 matrix, containing vertical transfers. `Tri[i, j]` (if `i != j`) is the flux from pool j to i. `Tri[i, i]` is the total flux leaving pool i. Only the three middle diagonals contain nonzero entries, meaning that there is only transfer between adjacent layers of the same pool type.
     - Each of these has a vectorized and non-vectorized implementation. They should produce the same result, vectorized is faster.
 * `src_binns/fun_matrix_clm5_vectorized_bulk_converge.py` is similar to above, but also outputs additional quantities (various combinations of parameters) that are used in final visualizations
+* `src_binns/sensitivity_test_par.py`: Python script for the sensitivity test of CLM5
 * `losses.py`: code for loss functions
 * `/post_training`: contains codes for reproducing figures in the manuscript
 
