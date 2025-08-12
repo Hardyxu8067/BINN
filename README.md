@@ -3,6 +3,12 @@
 This code implements the method proposed in "Biogeochemistry-Informed Neural Network (BINN) for Improving Accuracy of Model
 Prediction and Scientific Understanding of Soil Organic Carbon" (Xu et al. 2025). 
 
+## BINN Demo
+
+For those interested in exploring BINN, we recommend starting with our newly released [BINN Demo](https://github.com/Hardyxu8067/BINN_Demo/). It offers a concise introduction to BINN’s core components—its overall architecture, data structures, training workflow, and result visualizations.  
+
+You can run the demo directly in Google Colab, so you won’t spend valuable time on environment setup. When you’re ready to integrate the full BINN framework into your own research, simply follow the steps below to install and configure the complete environment.
+
 ## Installation Instructions
 
 The key packages to install are PyTorch, PyTorch Geometric, Numpy, Scipy, Pandas, matplotlib, scikit-learn, geopandas, mat73, and netCDF4. The exact version numbers needed to reproduce our results are pinned in `requirements.txt`. Here are instructions to install the necessary packages:
