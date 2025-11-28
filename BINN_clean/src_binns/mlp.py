@@ -137,7 +137,7 @@ class mlp(torch.nn.Module):
 class mlp_wrapper(nn.Module):
 	def __init__(self, input_vars, var_idx_to_emb, vertical_mixing, vectorized='yes', pos_enc='early',
 				 lipschitz=False, one_hot=False, use_bn=False, dropout_prob=0.0,
-				 activation='relu', train_x=None,
+				 activation='relu', para_activation='sigmoid', train_x=None,
 				 min_temp=10, max_temp=109, init="xavier_uniform", width=128,
 				 para_index=None):
 		"""
@@ -229,8 +229,9 @@ class mlp_wrapper(nn.Module):
 							  use_bn=use_bn, dropout_prob=dropout_prob, activation=activation, init=init)
 
 		# Parameter constraint
+		self.para_activation = para_activation
 		self.sigmoid = nn.Sigmoid()
-
+		self.hard_sigmoid = nn.Hardsigmoid()
 		# If using sigmoid: the "temperature" we divide by before the sigmoid
 		self.temp_sigmoid = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 		self.min_temp = min_temp
@@ -294,7 +295,14 @@ class mlp_wrapper(nn.Module):
 
 		# Pass biogeochemical parameters through sigmoid, constraining them between [0, 1]
 		self.unconstrained_params = mlp_output / clamped_temp_sigmoid
-		constrained_params = self.sigmoid(self.unconstrained_params)
+		if self.para_activation == 'sigmoid':
+			constrained_params = self.sigmoid(self.unconstrained_params)
+		elif self.para_activation == 'hard_sigmoid':
+			constrained_params = self.hard_sigmoid(self.unconstrained_params)
+		else:
+			raise NotImplementedError("Unsupported para_activation")
+		
+		# constrained_params = self.sigmoid(self.unconstrained_params)
 		if PRODA_para is None:
 			 # If PRODA parameters not provided, neural network must output all params
 			if self.vertical_mixing == 'simple_two_intercepts':

@@ -288,7 +288,7 @@ plot_1_a <- ggplot() +
   # theme_minimal() +
   # theme(legend.position = "right") +
   custom_theme +
-  labs(x = "Carbon influx (g C m^-2 year^-1)", y = "Ecosystem C residence time (Year)")
+  labs(x = expression("Carbon influx (g C m"^{-2}*" year"^{-1}*")"), y = "Ecosystem C residence time (year)")
   # ggtitle('BINN: Carbon Input vs Total Res Time') +
   # theme(plot.title = element_text(hjust = 0.5))
 
@@ -320,23 +320,23 @@ grid_data$storage_capacity <- grid_data$carbon_input * grid_data$total_res_time
 # contour_levels <- seq(10000, max(grid_data$storage_capacity, na.rm = TRUE), by = 10000)
 contour_levels <- seq(10000, 50000, by = 10000)
 
-# Calculate the storage capacity for each grid point
 plot_1_b <- ggplot() +
-  geom_point(data = biome_averages, aes(x = avg_carbon_input, y = avg_total_res_time, color = NA_L1NAME), size = 20) +
   # geom_point(data = biome_averages, aes(x = avg_carbon_input, y = avg_total_res_time, color = WWF_MHTNAM), size = 4, alpha=1) +
-  geom_contour(data = grid_data, aes(x = carbon_input, y = total_res_time, z = storage_capacity), breaks = contour_levels, color = "grey", alpha = 0.8, bins = 10) +
+  geom_contour(data = grid_data, aes(x = carbon_input, y = total_res_time, z = storage_capacity), breaks = contour_levels, color = "#909090", alpha = 0.8, bins = 10) +
   geom_text_contour(data = grid_data, aes(x = carbon_input, y = total_res_time, z = storage_capacity), 
-                    breaks = contour_levels, color = "grey", size = 10, stroke = 0.2, alpha = 0.8, 
+                    breaks = contour_levels, color = "#909090", size = 10, stroke = 0.2, alpha = 0.8, 
                     # label.placer = label_placer_flattest(),  
                     label.placer = label_placer_n(n = 1), 
                     label_format = function(x) paste0(x / 10000, "k")) +
+  geom_point(data = biome_averages, aes(x = avg_carbon_input, y = avg_total_res_time, color = NA_L1NAME), size = 20) +
   scale_color_manual(values = biome_colors) + 
   custom_theme +
-  scale_x_continuous(limit = c(0, 1100), expand = c(0, 0)) +
-  scale_y_continuous(limit = c(1, 350), expand = c(0, 0)) +
+  # scale_x_continuous(limit = c(0, 1100), expand = c(0, 0)) +
+  # scale_y_continuous(limit = c(1, 350), expand = c(0, 0)) +
+  coord_cartesian(xlim = c(0, 1100), ylim = c(1, 350), expand = FALSE) + 
   # Overlap theme to remove the legend
   theme(legend.position = "none") +
-  labs(x = "Carbon influx (g C m^-2 year^-1)", y = "Ecosystem C residence time (Year)") + 
+  labs(x = expression("Carbon influx (g C m"^{-2}*" year"^{-1}*")"), y = "Ecosystem C residence time (year)") + 
   theme(plot.margin = unit(c(2, 2, 2, 2), 'inch'))
 
 # plot_1_list[[2]] = plot_1_b
@@ -366,23 +366,26 @@ grid_data <- expand.grid(bulk_xi = bulk_xi_range, baseline_res_time = baseline_r
 grid_data$res_time <- grid_data$baseline_res_time / grid_data$bulk_xi
 
 # Define levels of storage capacity for contour plotting
-contour_levels <- seq(50, max(grid_data$res_time, na.rm = TRUE), by = 50)
+# contour_levels <- seq(50, max(grid_data$res_time, na.rm = TRUE), by = 50)
+contour_levels <- seq(50, 350, by = 50)
 # contour_levels <- seq(10000, 50000, by = 10000)
 
 # Calculate the storage capacity for each grid point
 plot_1_c <- ggplot() +
-  geom_point(data = plot_data_avg, aes(x = avg_bulk_xi, y = avg_res_time_base, color = NA_L1NAME), size = 20) +
   # geom_point(data = biome_averages, aes(x = avg_carbon_input, y = avg_total_res_time, color = WWF_MHTNAM), size = 4, alpha=1) +
-  geom_contour(data = grid_data, aes(x = bulk_xi, y = baseline_res_time, z = res_time), breaks = contour_levels, color = "grey", alpha = 0.8) +
+  geom_contour(data = grid_data, aes(x = bulk_xi, y = baseline_res_time, z = res_time), breaks = contour_levels, color = "#909090", alpha = 0.8) +
   geom_text_contour(data = grid_data, aes(x = bulk_xi, y = baseline_res_time, z = res_time), 
-                    breaks = contour_levels, color = "grey", size = 10, stroke = 0.2, alpha = 0.8, 
-                    label.placer = label_placer_flattest(),  
+                    breaks = contour_levels, color = "#909090", size = 10, stroke = 0.2, alpha = 0.8, 
+                    # label.placer = label_placer_flattest(),  
+                    label.placer = label_placer_n(n = 1),
                     label_format = function(x) paste0(x / 10000, "k")) +
+  geom_point(data = plot_data_avg, aes(x = avg_bulk_xi, y = avg_res_time_base, color = NA_L1NAME), size = 20) +
   scale_color_manual(values = biome_colors) + 
   custom_theme +
-  scale_x_continuous(limit = c(0.02, 0.3), expand = c(0, 0)) +
-  scale_y_continuous(limit = c(7, 14), expand = c(0, 0)) +
-  labs(x = "Environmental scalar (ξ)", y = "Baseline C residence time (Year)") +
+  # scale_x_continuous(limit = c(0.02, 0.3), expand = c(0, 0)) +
+  # scale_y_continuous(limit = c(7, 14), expand = c(0, 0)) +
+  coord_cartesian(xlim = c(0.02, 0.3), ylim = c(4, 15), expand = FALSE) +
+  labs(x = "Environmental scalar (ξ)", y = "Baseline C residence time (year)") +
   theme(legend.position = "none") + 
   theme(plot.margin = unit(c(2, 2, 2, 2), 'inch'))
 
@@ -398,7 +401,7 @@ plot_1_list[[2]] = plot_1_c
 #     theme(legend.position = "right")
 # )
 
-top_row <- plot_grid(plot_1_list[[1]], plot_1_list[[2]], ncol = 2, labels = c('(a)', '(b)'), label_size = 70, label_x = 0, label_y = 0.1)
+top_row <- plot_grid(plot_1_list[[1]], plot_1_list[[2]], ncol = 2, labels = c('(a)', '(b)'), label_size = 70, label_x = 0, label_y = 1.)
 
 # combined_plot <- plot_grid(
 #   plotlist = plot_1_list, ncol = 2, labels = c('a', 'b'), label_size = 30, rel_widths = c(3, 3, 3, 0.10), 
@@ -441,7 +444,7 @@ biomes_map_plot = ggplot() +
 # dev.off()
 
 
-final_plot <- plot_grid(top_row, biomes_map_plot, ncol = 1, rel_widths = c(2, 0.4), labels = c('','(c)'), label_size = 70, label_x = 0, label_y = 0.1)
+final_plot <- plot_grid(top_row, biomes_map_plot, ncol = 1, rel_widths = c(2, 0.4), labels = c('','(c)'), label_size = 70, label_x = 0, label_y = 1.05)
 
 # Save the plots
 jpeg(paste(cross_validation_dir_output, 'BINN_Traceable_Parts_Carbon_Input_vs_Residence_Time.jpg', sep = ''), width = 50, height = 40, units = 'in', res = 300)

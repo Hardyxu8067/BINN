@@ -10,9 +10,6 @@ import warnings
 import subprocess
 import argparse
 
-# sys.path.append('C:/Users/hx293/Research_Data/BINN/')
-# sys.path.append('/glade/u/home/haodixu/BINN')
-# sys.path.append(r'/User/homes/ftao/Projects/BINNS/src_binns')
 sys.path.append('/glade/work/haodixu/BINN')
 
 # Set HDF5_DISABLE_VERSION_CHECK to suppress version mismatch error
@@ -26,11 +23,7 @@ import pandas as pd
 from pandas import DataFrame as df
 import numpy as np
 from scipy.interpolate import pchip_interpolate
-# parallel computing
-# import concurrent.futures
-# import torch.multiprocessing as mp
-# # initialize the multiprocessing for pytorch
-# mp.set_start_method('spawn', force=True)
+
 print("Start binns_DDP")
 
 import os
@@ -60,13 +53,8 @@ from collections import OrderedDict
 # Import Different Versions of CLM5 #
 #####################################
 
-# from fun_matrix_clm5 import fun_model_simu
 from fun_matrix_clm5_vectorized import fun_model_simu
-# from fun_matrix_clm5_GPU import fun_model_simu
-# from fun_matrix_clm5_parallel import fun_model_simu
-# from fun_matrix_clm5_parallel_update_V_matrix import fun_model_simu
 import visualization_utils
-# from fun_matrix_clm5_vectorized_bulk_converge import fun_bulk_simu
 from fun_matrix_clm5_vectorized_sensitivity import fun_model_sensitivity
 
 ################################################
@@ -100,11 +88,8 @@ print(datetime.now(), '------------device: ', device, '------------')
 # print the number of cores
 cpu_count = multiprocessing.cpu_count()
 thread_count = torch.get_num_threads()
-# print("Number of CPUs: ", torch.cpu.device_count())  # No idea why it is not working on NCAR server
 print("Number of Cores: ", cpu_count)
 print("Number of threads: ", thread_count)
-# set the number of threads  
-# torch.set_num_threads(thread_count-1)
 print(datetime.now(), '------------number of cores: ', cpu_count, '------------')
 
 print(datetime.now(), '------------all packages loaded------------')
@@ -129,16 +114,11 @@ start_id = 1
 end_id = 5000
 is_resubmit = 0
 
-# @joshuafan changed
 # pathway
-# data_dir_input = '/Users/phoenix/Google_Drive/Tsinghua_Luo/Projects/DATAHUB/ENSEMBLE/INPUT_DATA/'
-# data_dir_output = '/Users/phoenix/Google_Drive/Tsinghua_Luo/Projects/DATAHUB/BINNS/OUTPUT_DATA/'
-# data_dir_input = 'C:/Users/hx293/Research_Data/BINN/ENSEMBLE/INPUT_DATA/'
-# data_dir_output = 'C:/Users/hx293/Unsync_Data/BINN_output/'
 # server path
 data_dir_input = '/glade/u/home/haodixu/BINN/ENSEMBLE/INPUT_DATA/'
-data_dir_output = '/glade/work/haodixu/BINN/BINNS/OUTPUT_DATA/Sensitivity_Test_1000/'
-data_dir_w_scaling = '/glade/work/haodixu/BINN/BINNS/OUTPUT_DATA/Sensitivity_Test_1000/w_scaling/'
+data_dir_output = '/glade/work/haodixu/BINN/BINNS/OUTPUT_DATA/Sensitivity_Test_1000_norm/'
+data_dir_w_scaling = '/glade/work/haodixu/BINN/BINNS/OUTPUT_DATA/Sensitivity_Test_1000_norm/w_scaling/'
 os.makedirs(data_dir_output, exist_ok=True)
 os.makedirs(data_dir_w_scaling, exist_ok=True)
 
@@ -210,8 +190,6 @@ print(PRODA_para.head())
 #-------------------------------
 # Define parameter names
 para_name = ['diffus', 'cryo', 'q10', 'efolding', 'taucwd', 'taul1', 'taul2', 'tau4s1', 'tau4s2', 'tau4s3', 'fl1s1', 'fl2s1', 'fl3s2', 'fs1s2', 'fs1s3', 'fs2s1', 'fs2s3', 'fs3s1', 'fcwdl2', 'w-scaling', 'beta']
-# para_name = ['diffus', 'cryo', 'q10', 'efolding', 'taucwd', 'taul1', 'taul2', 'tau4s1', 'tau4s2', 'tau4s3', 'fl1s1', 'fl2s1', 'fl3s2', 'fs1s2', 'fs1s3', 'fs2s1', 'fs2s3', 'fs3s1', 'fcwdl2', 'w-scaling']
-# para_name = ['slope_v', 'intercept_v', 'q10', 'efolding', 'tau4cwd', 'tau4l1', 'tau4l2', 'tau4s1', 'tau4s2', 'tau4s3', 'fl1s1', 'fl2s1', 'fl3s2', 'fs1s2', 'fs1s3', 'fs2s1', 'fs2s3', 'fs3s1', 'fcwdl2', 'w_scaling', 'beta']
 # Define the prior range for each parameter in the order of para_name
 # Original V matrix method
 prior_range = [[3*1e-5, 5*1e-4], [3*1e-5, 16*1e-4], [1.2, 3], [0.1, 1], [1, 6], [0.0001, 0.11], [0.1, 0.3], [0.0001, 0.5], [1, 10], [20, 400], [0.1, 0.8], [0.2, 0.8], [0.2, 0.8], [0.0001, 0.4], [0.0001, 0.1], [0.1, 0.74], [0.0001, 0.1], [0.0001, 0.9], [0.5, 1], [0.0001, 5], [0.1, 0.9999]]
@@ -302,15 +280,6 @@ sample_profile_id = loadmat(data_dir_input + 'wosis_2019_snap_shot/wosis_2019_sn
 sample_profile_id = sample_profile_id['sample_profile_id']
 # convert the number to be starting from 0 in python world
 sample_profile_id = sample_profile_id - 1
-
-### Use 2000 profiles for testing ###
-# profile_collection = np.reshape(sample_profile_id[:, 0:20], [2000, 1])
-
-# if use the whole dataset
-# profile_collection = np.arange(0, 20000)
-# if select 
-# profile_collection = np.arange(0, wosis_profile_info.shape[0])
-# profile_collection = np.reshape(profile_collection, [profile_collection.shape[0], 1])	
 
 # choose the profile id with lat and lon within the range of the United States
 profile_collection = np.where(
@@ -427,37 +396,8 @@ for iprofile_hat in profile_range:
 		obs_soc_matrix[iprofile_hat, 0:num_layers] = wosis_layer_obs
 		obs_upper_depth_matrix[iprofile_hat, 0:num_layers] = wosis_layer_upper_depth
 		obs_lower_depth_matrix[iprofile_hat, 0:num_layers] = wosis_layer_lower_depth
-		
-	
-	
+
 	# end if num_layers > 0:
-	
-	# interpolation
-	# if num_layers > 1:
-	# 	wosis_layer_depth = wosis_layer_depth[valid_soc_loc]/100 # convert unit from cm to m
-	# 	wosis_layer_obs = wosis_layer_obs[valid_soc_loc]
-	# 	
-	# 	wosis_layer_depth = wosis_layer_depth + (np.random.rand(num_layers)-0.5)*10**(-7)
-	# 	sort_index = np.argsort(wosis_layer_depth)
-	# 	wosis_layer_depth = wosis_layer_depth[sort_index]
-	# 	wosis_layer_obs = wosis_layer_obs[sort_index]
-	# 	
-	# 	interp_soc = pchip_interpolate(wosis_layer_depth, wosis_layer_obs, zsoi)
-	# 	interp_soc[interp_soc <= 0] = np.nan
-	# 	interp_start_loc = np.where(abs(wosis_layer_depth[0] - zsoi) == min(abs(wosis_layer_depth[0] - zsoi)))[0]
-	# 	interp_end_loc = np.where(abs(wosis_layer_depth[-1] - zsoi) == min(abs(wosis_layer_depth[-1] - zsoi)))[0]
-	# 	if (interp_start_loc < 19) & (interp_end_loc < 19):
-	# 		# print('multilayer profile: ', iprofile_hat)
-	# 		obs_soc_matrix[iprofile_hat, interp_start_loc[0]:interp_end_loc[0]] = interp_soc[interp_start_loc[0]:interp_end_loc[0]]
-	# elif num_layers == 1:
-	# 	wosis_layer_depth = wosis_layer_depth[valid_soc_loc]/100 # convert unit from cm to m
-	# 	wosis_layer_obs = wosis_layer_obs[valid_soc_loc]
-	# 	
-	# 	closest_loc = np.where(abs(wosis_layer_depth[0] - zsoi) == min(abs(wosis_layer_depth[0] - zsoi)))[0]
-	# 	obs_soc_matrix[iprofile_hat, closest_loc] = wosis_layer_obs[0]
-	# elif num_layers == 0:
-	# 	print('invalid profile: ', iprofile_hat)
-	# # end if num_layers > 3:
 
 	obs_lon_lat_loc[iprofile_hat, :] = [lon_loc, lat_loc]
 	
@@ -610,21 +550,6 @@ var4nn = ['Lon', 'Lat', \
 'nbedrock']
 
 
-# var_idx_to_emb = dict()
-# for group in categorical_vars:
-# 	n_categories = int(np.nanmax(env_info[group]) + 1)
-# 	print("Variable {}: num categories {}".format(group, n_categories))
-# 	print("Unique values", env_info[group].value_counts(sort=True))
-# 	emb = nn.Embedding(num_embeddings=n_categories, embedding_dim=embed_dim).to(device)
-# 	for var in group:
-# 		idx = var4nn.index(var)
-# 		var_idx_to_emb[idx] = emb
-
-
-# For each embedding layer, extract which variables are passed through it,
-# and the number of classes for each variable
-
-
 #---------------------------------------------------
 # training data
 #---------------------------------------------------
@@ -651,39 +576,6 @@ current_data_z = obs_depth_matrix
 
 lons = np.array(env_info.loc[profile_collection[:, 0], "original_lon"])
 lats = np.array(env_info.loc[profile_collection[:, 0], "original_lat"])
-
-# for col_idx, col_name in enumerate(var4nn):
-# 	envir_var_values = current_data_x[:, col_idx, 0, 0]
-# 	categorical = (col_name in categorical_vars_flattened)
-# 	visualization_utils.plot_observations_world_map(lons, lats, envir_var_values, PLOT_DIR, col_name, categorical=categorical)
-
-# # Plot SOC observation labels within each layer. If a profile has multiple observations 
-# # in a layer, pick the first one
-# layer_top = 0
-# for layer_idx in range(len(zisoi)):
-# 	layer_bottom = zisoi[layer_idx]
-# 	this_layer_y = np.ones((current_data_y.shape[0])) * np.nan
-
-# 	# Loop through all profiles
-# 	for j in range(current_data_y.shape[0]):
-# 		# Get depth of each SOC observation
-# 		depths = current_data_z[j]
-
-# 		# Select SOC observations whose depth falls within the current layer
-# 		this_layer_this_profile_y = current_data_y[j, (~np.isnan(depths)) & (depths >= layer_top) & (depths < layer_bottom)]
-# 		if len(this_layer_this_profile_y) > 1:
-# 			continue
-# 			print("Oddly enough this profile had more than 2 observations in the same soil layer")
-# 			print("Layer", layer_top, "to", layer_bottom)
-# 			print("Observation depths", depths)
-# 		elif len(this_layer_this_profile_y) == 0:
-# 			continue
-# 		else:
-# 			this_layer_y[j] = this_layer_this_profile_y[0]
-# 	layer_name = "Layer {} ({:.2f}-{:.2f} m)".format(layer_idx, layer_top, layer_bottom)
-# 	col_name = "soc_layer{}_{:.2f}-{:.2f}m".format(layer_idx, layer_top, layer_bottom)
-# 	visualization_utils.plot_observations_world_map(lons, lats, this_layer_y, PLOT_DIR, col_name)
-# 	layer_top = layer_bottom
 
 
 nan_loc = np.nanmean(current_data_y, axis = 1) + \
@@ -720,79 +612,6 @@ print("Shape of obs lower depth matrix", obs_lower_depth_matrix.shape)
 PRODA_para = PRODA_para.loc[PRODA_para['profile_id'].isin(current_data_profile_id)]
 PRODA_para = PRODA_para.sort_values(by='profile_id')                 
 print("Shape of PRODA para", PRODA_para.shape)
-
-#---------------------------------------------------
-# CLM5 Default model parameters
-#---------------------------------------------------
-# #                                                    #####################
-# # v matrix parameters (vertical discretization) with ## prior knowledge ##
-# #                                                    #####################
-
-# slope_v = 0.5 * ((0) - (-3)) + (-3)
-# intercept_v = 0.5 * ((-5) - (-9)) + (-9)
-
-# # path to default parameter file
-# default_para_path = data_dir_input + '/wosis_2019_snap_shot/clm5_params.c190829.nc'
-
-# # define parameter names
-# # bio = ncread(default_para_path, 'som_diffus')*3600*24*365 # diffusion (bioturbation?) (m2/yr)
-# # cryo = ncread(default_para_path, 'cryoturb_diffusion_k')*3600*24*365 # exp(kp(2)*(-7 - (-12)) + (-12)); % cryoturbation (m2/yr)
-# q10 = ncread.Dataset(default_para_path)['q10_hr'][:] # Q10 for heterotrophic respiration (unitless)
-# # fq10 = ncread(default_para_path, 'froz_q10') # Q10 when forzen (unitless)
-# fq10 = q10
-# efolding = ncread.Dataset(default_para_path)['decomp_depth_efolding'][:] # parameters used in vertical discretization of carbon inputs (metre)
-
-# tau4cwd = ncread.Dataset(default_para_path)['tau_cwd'][:] # kp(5)*(10 - 1) + 1; % turnover time of CWD (yr) 4.1 in technote
-# tau4l1 = ncread.Dataset(default_para_path)['tau_l1'][:] # kp(6)*(0.2 - 0) + 0; % tau for metabolic litter (yr) 0.066 in technote
-# tau4l2 = ncread.Dataset(default_para_path)['tau_l2_l3'][:] #kp(7)*(1 - 0.2) + 0.2; % tau for cellulose litter (yr) 0.25 in technote
-# tau4l3 = tau4l2 # tau for lignin litter (yr)
-
-# tau4s1 = ncread.Dataset(default_para_path)['tau_s1'][:] # kp(8)*(0.5 - 0) + 0; % tau for fast SOC (yr) 0.1 in technote
-# tau4s2 = ncread.Dataset(default_para_path)['tau_s2'][:] # kp(9)*(10 - 0.5) + 0.5; % tau for slow SOC (yr) 4 in technote
-# tau4s3 = ncread.Dataset(default_para_path)['tau_s3'][:] # kp(10)*(1000 - 10) + 10; % tau for passive SOC (yr) 1000 in technote
-
-# fl1s1 = 1 - ncread.Dataset(default_para_path)['rf_l1s1_bgc'][:] # 1 - 0.55;
-# fl2s1 = 1 - ncread.Dataset(default_para_path)['rf_l2s1_bgc'][:] # 1 - 0.5;
-# fl3s2 = 1 - ncread.Dataset(default_para_path)['rf_l3s2_bgc'][:] # 1 - 0.5;
-# fs1s2 = np.nan # not a constant
-# fs1s3 = np.nan # not a constant
-# fs2s1 = (0.42/0.45)*(1 - ncread.Dataset(default_para_path)['rf_s2s1_bgc'][:]) # (0.42/0.45)*(1 - 0.55);
-# fs2s3 = (0.03/0.45)*(1 - ncread.Dataset(default_para_path)['rf_s2s3_bgc'][:]) # (0.03/0.45)*(1 - 0.55);
-# fs3s1 = 1 - ncread.Dataset(default_para_path)['rf_s3s1_bgc'][:] # 1 - 0.55;
-# fcwdl2 = 1 - ncread.Dataset(default_para_path)['cwd_flig'][:] # 0.76;
-
-# # fs1s2 and fs1s3 by prior knowledge
-# fs1s2 = 0.5*(0.4 - 0.0001) + 0.0001
-# fs1s3 = 0.5*(0.1 - 0.0001) + 0.0001
-
-# # water scaling factor by proir knowledge (?)
-# w_scaling = 1 
-
-# # beta by prior knowledge
-# beta = 0.5*(0.9 - 0.5) + 0.5
-
-# # print("slope_v", slope_v)
-# # print("intercept_v", intercept_v)
-# # print("q10", q10)
-# # print("fq10", fq10)
-# # print("efolding", efolding)
-# # print("tau4cwd", tau4cwd)
-# # print("tau4l1", tau4l1)
-# # print("tau4l2", tau4l2)
-# # print("tau4l3", tau4l3)
-# # print("tau4s1", tau4s1)
-# # print("tau4s2", tau4s2)
-# # print("tau4s3", tau4s3)
-# # print("fl1s1", fl1s1)
-# # print("fl2s1", fl2s1)
-# # print("fl3s2", fl3s2)
-# # print("fs1s2", fs1s2)
-# # print("fs1s3", fs1s3)
-# # print("fs2s1", fs2s1)
-# # print("fs2s3", fs2s3)
-# # print("fs3s1", fs3s1)
-# # print("fcwdl2", fcwdl2)
-# # print("w_scaling", w_scaling)
 
 print(datetime.now(), '------------parameters loaded------------')
 
@@ -862,7 +681,9 @@ def worker(rank, world_size):
 		for idx_obs in range(1000):
 			# Freely select parameters from prior range
 			for ipara in range(len(para_name)):
-				obs_para[ipara] = torch.tensor(np.random.uniform(prior_range[ipara][0], prior_range[ipara][1]), requires_grad=False, device=device)
+				# obs_para[ipara] = torch.tensor(np.random.uniform(prior_range[ipara][0], prior_range[ipara][1]), requires_grad=False, device=device)
+				obs_para[ipara] = torch.tensor(np.random.normal(((prior_range[ipara][0] + prior_range[ipara][1])/2), \
+					(prior_range[ipara][1] - prior_range[ipara][0])/6), requires_grad=False, device=device)
 			# end for parameter selection
 			
 			# Initialize the model
@@ -876,32 +697,10 @@ def worker(rank, world_size):
 				obs_soc_100_[idx_obs] = torch.nan
 				# skip current loop
 				continue
-			obs_soc_all[idx_obs] = torch.nansum(temp_obs_soc)
+			obs_soc_all[idx_obs] = torch.nansum(temp_obs_soc[0, :])
 			obs_soc_0_30[idx_obs] = torch.nansum(temp_obs_soc[0, 0:6])
 			obs_soc_30_100[idx_obs] = torch.nansum(temp_obs_soc[0, 6:9])
 			obs_soc_100_[idx_obs] = torch.nansum(temp_obs_soc[0, 9:])
-			# # check if the observed SOC is nan or inf
-			# if torch.isnan(obs_soc_all[idx_obs]) or torch.isinf(obs_soc_all[idx_obs]) or torch.isnan(obs_soc_0_30[idx_obs]) or torch.isinf(obs_soc_0_30[idx_obs]) or torch.isnan(obs_soc_30_100[idx_obs]) or torch.isinf(obs_soc_30_100[idx_obs]) or torch.isnan(obs_soc_100_[idx_obs]) or torch.isinf(obs_soc_100_[idx_obs]):
-			# 	print('Observed SOC is nan or inf at profile ', batch_profile_id.item())
-			# 	print("Parameters: ", obs_para)
-
-		# end for idx_obs in range(100)
-		
-		# # Gather the observed SOC from all processes
-		# obs_soc_all_gather = [torch.zeros_like(obs_soc_all) for _ in range(world_size)]
-		# obs_soc_0_30_gather = [torch.zeros_like(obs_soc_0_30) for _ in range(world_size)]
-		# obs_soc_30_100_gather = [torch.zeros_like(obs_soc_30_100) for _ in range(world_size)]
-		# obs_soc_100__gather = [torch.zeros_like(obs_soc_100_) for _ in range(world_size)]
-		# # Gather the observed SOC from all processes
-		# dist.all_gather(obs_soc_all_gather, obs_soc_all)
-		# dist.all_gather(obs_soc_0_30_gather, obs_soc_0_30)
-		# dist.all_gather(obs_soc_30_100_gather, obs_soc_30_100)
-		# dist.all_gather(obs_soc_100__gather, obs_soc_100_)
-		# # Cat and reshape the observed SOC to a 1D tensor
-		# obs_soc_all = torch.cat(obs_soc_all_gather, dim=0)
-		# obs_soc_0_30 = torch.cat(obs_soc_0_30_gather, dim=0)
-		# obs_soc_30_100 = torch.cat(obs_soc_30_100_gather, dim=0)
-		# obs_soc_100_ = torch.cat(obs_soc_100__gather, dim=0)
 
 		# Remove nan and inf
 		obs_soc_all = obs_soc_all[~torch.isnan(obs_soc_all) & ~torch.isinf(obs_soc_all)]
@@ -983,7 +782,9 @@ def worker(rank, world_size):
 
 			for idx_test in range(100):
 				# Initialize the parameter for sensitivity test
-				test_para[ipara] = torch.tensor(np.random.uniform(prior_range[ipara][0], prior_range[ipara][1]), requires_grad=False, device=device)
+				# test_para[ipara] = torch.tensor(np.random.uniform(prior_range[ipara][0], prior_range[ipara][1]), requires_grad=False, device=device)
+				test_para[ipara] = torch.tensor(np.random.normal(((prior_range[ipara][0] + prior_range[ipara][1])/2), \
+					(prior_range[ipara][1] - prior_range[ipara][0])/6), requires_grad=False, device=device)
 				
 				# Initialize the tensor to store the simulated SOC
 				temp_soc_all = torch.zeros([sensitivity_test_num], requires_grad=False, device=device)
@@ -997,7 +798,9 @@ def worker(rank, world_size):
 					# Freely select parameters from prior range
 					for ipara_temp in range(len(para_name)):
 						if ipara_temp != ipara:
-							test_para[ipara_temp] = torch.tensor(np.random.uniform(prior_range[ipara_temp][0], prior_range[ipara_temp][1]), requires_grad=False, device=device)
+							# test_para[ipara_temp] = torch.tensor(np.random.uniform(prior_range[ipara_temp][0], prior_range[ipara_temp][1]), requires_grad=False, device=device)
+							test_para[ipara_temp] = torch.tensor(np.random.normal(((prior_range[ipara_temp][0] + prior_range[ipara_temp][1])/2), \
+								(prior_range[ipara_temp][1] - prior_range[ipara_temp][0])/6), requires_grad=False, device=device)
 						# end if ipara_temp != ipara
 					# end for ipara_temp in range(len(para_name))
 					
@@ -1011,7 +814,7 @@ def worker(rank, world_size):
 						temp_soc_100_[idx_temp] = torch.nan
 						# skip current loop
 						continue
-					temp_soc_all[idx_temp] = torch.nansum(temp_soc)
+					temp_soc_all[idx_temp] = torch.nansum(temp_soc[0, :])
 					temp_soc_0_30[idx_temp] = torch.nansum(temp_soc[0, 0:6])
 					temp_soc_30_100[idx_temp] = torch.nansum(temp_soc[0, 6:9])
 					temp_soc_100_[idx_temp] = torch.nansum(temp_soc[0, 9:])
@@ -1054,35 +857,6 @@ def worker(rank, world_size):
 		sensitivity_soc_0_30 = sensitivity_soc_0_30.T
 		sensitivity_soc_30_100 = sensitivity_soc_30_100.T
 		sensitivity_soc_100_ = sensitivity_soc_100_.T
-		# # Reshape the sensitivity to a 1D tensor
-		# # Shape after reshape: [1, 100, 21]
-		# sensitivity_soc_all = sensitivity_soc_all.unsqueeze(0)
-		# sensitivity_soc_0_30 = sensitivity_soc_0_30.unsqueeze(0)
-		# sensitivity_soc_30_100 = sensitivity_soc_30_100.unsqueeze(0)
-		# sensitivity_soc_100_ = sensitivity_soc_100_.unsqueeze(0)
-
-		# # Gather the sensitivity from all processes
-		# # Shape after gather: [world_size, 21, 100]
-		# sensitivity_soc_all_gather = [torch.zeros_like(sensitivity_soc_all) for _ in range(world_size)]
-		# sensitivity_soc_0_30_gather = [torch.zeros_like(sensitivity_soc_0_30) for _ in range(world_size)]
-		# sensitivity_soc_30_100_gather = [torch.zeros_like(sensitivity_soc_30_100) for _ in range(world_size)]
-		# sensitivity_soc_100__gather = [torch.zeros_like(sensitivity_soc_100_) for _ in range(world_size)]
-		# dist.all_gather(sensitivity_soc_all_gather, sensitivity_soc_all)
-		# dist.all_gather(sensitivity_soc_0_30_gather, sensitivity_soc_0_30)
-		# dist.all_gather(sensitivity_soc_30_100_gather, sensitivity_soc_30_100)
-		# dist.all_gather(sensitivity_soc_100__gather, sensitivity_soc_100_)
-
-		# # Cat and reshape the sensitivity to the shape [100*world_size, 21]
-		# sensitivity_soc_all = torch.cat(sensitivity_soc_all_gather, dim=0).reshape(-1, 7)
-		# sensitivity_soc_0_30 = torch.cat(sensitivity_soc_0_30_gather, dim=0).reshape(-1, 7)
-		# sensitivity_soc_30_100 = torch.cat(sensitivity_soc_30_100_gather, dim=0).reshape(-1, 7)
-		# sensitivity_soc_100_ = torch.cat(sensitivity_soc_100__gather, dim=0).reshape(-1, 7)
-
-		# # Remove nan and inf but keep the shape
-		# sensitivity_soc_all = sensitivity_soc_all[~torch.isnan(sensitivity_soc_all) & ~torch.isinf(sensitivity_soc_all)]
-		# sensitivity_soc_0_30 = sensitivity_soc_0_30[~torch.isnan(sensitivity_soc_0_30) & ~torch.isinf(sensitivity_soc_0_30)]
-		# sensitivity_soc_30_100 = sensitivity_soc_30_100[~torch.isnan(sensitivity_soc_30_100) & ~torch.isinf(sensitivity_soc_30_100)]
-		# sensitivity_soc_100_ = sensitivity_soc_100_[~torch.isnan(sensitivity_soc_100_) & ~torch.isinf(sensitivity_soc_100_)]
 
 		# Calculate the variance of the sensitivity
 		# Shape after var: [3]
@@ -1142,7 +916,6 @@ def worker(rank, world_size):
 	sensitivity_soc_0_30_var_mean = torch.nanmean(sensitivity_0_30_var, dim=0)
 	sensitivity_soc_30_100_var_mean = torch.nanmean(sensitivity_30_100_var, dim=0)
 	sensitivity_soc_100_var_mean = torch.nanmean(sensitivity_100_var, dim=0)
-	
 
 	
 	# Save the sensitivity to excel file
@@ -1159,58 +932,6 @@ def worker(rank, world_size):
 		print('Sensitivity calculated in ', time.time() - start_time, ' seconds')
 	
 	print("Number of singular matrix and SOC larger than 5000 kgC/m2 encounter in profile ", sensitivity_profile_id.item(), " is ", num_singular_test)
-	# # Create bar plot for sensitivity of each parameter
-	# elif rank == 1: 
-	# 	fig, ax = plt.subplots()
-	# 	ax.bar(para_name, sensitivity_soc_all_var.cpu().detach().numpy())
-	# 	ax.set_xlabel('Parameter')
-	# 	ax.set_ylabel('Sensitivity')
-	# 	ax.set_title('Sensitivity of each parameter to SOC at all layers')
-	# 	fig.set_size_inches(18.5, 10.5)
-	# 	plt.xticks(rotation=90)
-	# 	plt.savefig(data_dir_output + '/Sensitivity_soc_all.png')
-	# 	plt.close()
-	# 	print('Sensitivity of each parameter to SOC at all layers saved')
-
-	# elif rank == 2:
-	# 	fig, ax = plt.subplots()
-	# 	ax.bar(para_name, sensitivity_soc_0_30_var.cpu().detach().numpy())
-	# 	ax.set_xlabel('Parameter')
-	# 	ax.set_ylabel('Sensitivity')
-	# 	ax.set_title('Sensitivity of each parameter to SOC at 0-30cm')
-	# 	fig.set_size_inches(18.5, 10.5)
-	# 	plt.xticks(rotation=90)
-	# 	plt.savefig(data_dir_output + '/Sensitivity_soc_0_30.png')
-	# 	plt.close()
-	# 	print('Sensitivity of each parameter to SOC at 0-30cm saved')
-
-	# elif rank == 3:
-	# 	fig, ax = plt.subplots()
-	# 	ax.bar(para_name, sensitivity_soc_30_100_var.cpu().detach().numpy())
-	# 	ax.set_xlabel('Parameter')
-	# 	ax.set_ylabel('Sensitivity')
-	# 	ax.set_title('Sensitivity of each parameter to SOC at 30-100cm')
-	# 	fig.set_size_inches(18.5, 10.5)
-	# 	plt.xticks(rotation=90)
-	# 	plt.savefig(data_dir_output + '/Sensitivity_soc_30_100.png')
-	# 	plt.close()
-	# 	print('Sensitivity of each parameter to SOC at 30-100cm saved')
-
-	# elif rank == 4:
-	# 	fig, ax = plt.subplots()
-	# 	ax.bar(para_name, sensitivity_soc_100_var.cpu().detach().numpy())
-	# 	ax.set_xlabel('Parameter')
-	# 	ax.set_ylabel('Sensitivity')
-	# 	ax.set_title('Sensitivity of each parameter to SOC at 100-')
-	# 	fig.set_size_inches(18.5, 10.5)
-	# 	plt.xticks(rotation=90)
-	# 	plt.savefig(data_dir_output + '/Sensitivity_soc_100_.png')
-	# 	plt.close()
-	# 	print('Sensitivity of each parameter to SOC at 100- saved')
-
-
-
-
 
 # Initialize the process
 if __name__ == '__main__':

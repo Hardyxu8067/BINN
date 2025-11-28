@@ -249,8 +249,8 @@ dim(current_data_clm_us)
 dim(current_data_binn_us)
 
 # Combine lon and lat for the two data
-current_data_clm_us[ , c('lon_lat')] = paste(current_data_clm_us$lon, current_data_clm_us$lat, sep = '_')
-current_data_binn_us[ , c('lon_lat')] = paste(current_data_binn_us$lon, current_data_binn_us$lat, sep = '_')
+current_data_clm_us[ , c('lon_lat')] = paste(round(current_data_clm_us$lon, 2), round(current_data_clm_us$lat, 2), sep = '_')
+current_data_binn_us[ , c('lon_lat')] = paste(round(current_data_binn_us$lon, 2), round(current_data_binn_us$lat, 2), sep = '_')
 # Select the interested rows in both data based on the lon and lat
 interested_lon_lat = intersect(current_data_clm_us$lon_lat, current_data_binn_us$lon_lat)
 current_data_clm_us = current_data_clm_us[current_data_clm_us$lon_lat %in% interested_lon_lat, ]
@@ -285,7 +285,6 @@ ipara = 3
 
 # Begin Plotting
 for (ipara in 1:length(process_name)){
-
   # BINN
   middle_data_binn = current_data_binn_us[ , c(1:2, 2 + ipara)]
   colnames(middle_data_binn) = c('lon', 'lat', 'process')
@@ -303,7 +302,18 @@ for (ipara in 1:length(process_name)){
   
   legend_lower_clm = apply(rbind(legend_lower_clm, legend_lower_binn), 2, min)
   legend_upper_clm = apply(rbind(legend_upper_clm, legend_upper_binn), 2, max)
-  
+
+  # round to the closest 10
+  legend_lower_clm = floor(legend_lower_clm * 0.1) / 0.1
+  legend_upper_clm = ceiling(legend_upper_clm * 0.1) / 0.1
+
+  # legend_lower_clm[6] = 0
+  # legend_upper_clm[6] = ceiling(legend_upper_clm[6] / 200) * 200
+
+  # Set the same legend for all processes
+  legend_lower_clm[1:5] = 0
+  legend_upper_clm[1:5] = 1
+
   legend_lower_binn = legend_lower_clm
   legend_upper_binn = legend_upper_clm
   
@@ -322,11 +332,11 @@ for (ipara in 1:length(process_name)){
     # theme_map() +
     ylim(lat_limits_albers[ , 2]) +
     # change the legend properties
-    # theme(legend.position = 'none') +
-    theme(legend.justification = c(0, 0), legend.position = c(-0.03, 0.02), legend.background = element_rect(fill = NA), legend.text.align = 0) +
+    theme(legend.position = 'none') +
+    # theme(legend.justification = c(0, 0), legend.position = c(-0.1, 0.02), legend.background = element_rect(fill = NA), legend.text.align = 0) +
     # theme(legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.background = element_rect(fill = NA), legend.direction = 'horizontal') +
     # change the size of colorbar
-    guides(fill = guide_colorbar(direction = 'vertical', barwidth = 2, barheight = 10, title.position = 'top', title.hjust = 0, label.hjust = 0, frame.linewidth = 0), reverse = FALSE) +
+    guides(fill = guide_colorbar(direction = 'vertical', barwidth = 3, barheight = 12, title.position = 'top', title.hjust = 0, label.hjust = 0, frame.linewidth = 0), reverse = FALSE) +
     theme(legend.text = element_text(size = 30, ), legend.title = element_text(size = 35)) +
     # add title
     labs(title = paste('BINN: ', process_name[ipara], sep = ''), x = '', y = '') + 
@@ -344,7 +354,7 @@ for (ipara in 1:length(process_name)){
   p_clm =
     ggplot() +
     geom_tile(data = middle_data_clm, aes(x = lon, y = lat, fill = process), height = 60000, width = 60000, na.rm = TRUE) +
-    scale_fill_gradientn(name = process_unit[ipara], colours = rev(viridis(15)), na.value="transparent", limits = c(legend_lower_clm[ipara], legend_upper_clm[ipara]), trans = process_scale_option[ipara], oob = scales::squish) +
+    scale_fill_gradientn(name = process_unit[ipara], colours = rev(viridis(15)), na.value="transparent", limits = c(legend_lower_clm[ipara], legend_upper_clm[ipara]), breaks = unique(c(legend_lower_clm[ipara], (legend_lower_clm[ipara] + legend_upper_clm[ipara]) / 2, legend_upper_clm[ipara])), trans = process_scale_option[ipara], oob = scales::squish) +
     geom_sf(data = world_coastline, fill = NA, color = 'black', linewidth = 1) + 
     # geom_polygon(data = world_ocean, aes(x = lon, y = lat), fill = NA, color = 'black', size = 2) +
 	  coord_sf(xlim = lat_limits_albers[ , 1], ylim = lat_limits_albers[ , 2], datum = NA) +
@@ -354,10 +364,10 @@ for (ipara in 1:length(process_name)){
     ylim(lat_limits_albers[ , 2]) +
     # change the legend properties
     # theme(legend.position = 'none') +
-    theme(legend.justification = c(0, 0), legend.position = c(-0.03, 0.02), legend.background = element_rect(fill = NA), legend.text.align = 0) +
+    theme(legend.justification = c(0, 0), legend.position = c(-0.28, 0.24), legend.background = element_rect(fill = NA), legend.text.align = 0) +
     # theme(legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.background = element_rect(fill = NA), legend.direction = 'horizontal') +
     # change the size of colorbar
-    guides(fill = guide_colorbar(direction = 'vertical', barwidth = 2, barheight = 10, title.position = 'top', title.hjust = 0, label.hjust = 0, frame.linewidth = 0), reverse = FALSE) +
+    guides(fill = guide_colorbar(direction = 'vertical', barwidth = 3, barheight = 15, title.position = 'top', title.hjust = 0, label.hjust = 0, frame.linewidth = 0, title.theme = element_text(margin = margin(b = 20))), reverse = FALSE) +
     theme(legend.text = element_text(size = 30, ), legend.title = element_text(size = 35)) +
     # add title
     labs(title = paste('PRODA: ', process_name[ipara], sep = ''), x = '', y = '') + 
@@ -401,7 +411,7 @@ for (ipara in 1:length(process_name)){
 		# add title
 		labs(title = '', x = 'PRODA', y = 'BINN') + 
     # add correlation information
-    annotate('text', label = paste('Correlation: ', round(corr_process_middle$estimate, 2), sep = ''), size = 12, x = -Inf, y = Inf, hjust = 0, vjust = 1) +
+    annotate('text', label = paste('Correlation: ', round(corr_process_middle$estimate, 2), sep = ''), size = 12, x = -Inf, y = Inf, hjust = -0.2, vjust = 1) +
 		# change the legend properties
 		guides(fill = guide_colorbar(direction = 'horizontal', barwidth = 15, barheight = 2.5, title.position = 'right', title.hjust = 0, title.vjust = 0.8, label.hjust = 0.5, frame.linewidth = 0), reverse = FALSE) +
 		theme(legend.text = element_text(size = 25), legend.title = element_text(size = 25))  +
@@ -422,7 +432,7 @@ for (ipara in 1:length(process_name)){
 }
 
 
-jpeg(paste(cross_validation_dir_output, 'Bulk_Process.jpeg', sep = ''), width = 36, height = 35, units = 'in', res = 300)
+jpeg(paste(cross_validation_dir_output, 'Bulk_Process.jpeg', sep = ''), width = 35, height = 40, units = 'in', res = 300)
 plot_grid(p_binn1, p_clm1, p_corr1, NULL, 
           p_binn3, p_clm3, p_corr3, NULL, 
           p_binn5, p_clm5, p_corr5, NULL, 
@@ -431,14 +441,14 @@ plot_grid(p_binn1, p_clm1, p_corr1, NULL,
           p_binn6, p_clm6, p_corr6, NULL, 
           nrow = 6, ncol = 4 ,
           rel_widths = c(3, 3, 3, 0.10),
-          labels = c('a', 'b', 'c', ' ',
-                     'd', 'e', 'f', ' ',
-                     'g', 'h', 'i', ' ',
-                     'j', 'k', 'l', ' ',
-                     'm', 'n', 'o', ' ',
-                     'p', 'q', 'r', ' '),
-          label_size = 70,
-          label_x = 0.05, label_y = 1.05,
+          labels = c('(a)', '(b)', '(c)', ' ',
+                     '(d)', '(e)', '(f)', ' ',
+                     '(g)', '(h)', '(i)', ' ',
+                     '(j)', '(k)', '(l)', ' ',
+                     '(m)', '(n)', '(o)', ' ',
+                     '(p)', '(q)', '(r)', ' '),
+          label_size = 50,
+          label_x = -0.02, label_y = 1.02,
           label_fontfamily = 'Arial',
           label_fontface = 'bold'
 )
@@ -450,7 +460,7 @@ plot_grid(p_binn7, p_clm7, p_corr7, NULL,
           rel_widths = c(3, 3, 3, 0.10),
           labels = c('a', 'b', 'c', ' '),
           label_size = 70,
-          label_x = 0.05, label_y = 1.05,
+          label_x = 0.05, label_y = 1.02,
           label_fontfamily = 'Arial',
           label_fontface = 'bold'
 )

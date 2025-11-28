@@ -17,6 +17,7 @@ import torch.nn.parallel
 import torch.utils.data
 from spatial_utils import *
 
+
 class LayerNorm(nn.Module):
     """
     layer normalization

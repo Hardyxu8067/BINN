@@ -74,7 +74,7 @@ def makeEdgeWeight(x, edge_index):
 
 # knn graph to adjacency matrix (probably already built)
 def knn_to_adj(knn, n):
-  adj_matrix = torch.zeros(n, n, dtype=float) #lil_matrix((n, n), dtype=float) 
+  adj_matrix = torch.zeros(n, n) #lil_matrix((n, n), dtype=float) 
   for i in range(len(knn[0])):
     tow = knn[0][i]
     fro = knn[1][i]
