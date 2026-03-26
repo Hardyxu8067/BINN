@@ -292,61 +292,219 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='yes
 		bio = para[0]*(5*1e-4 - 3*1e-5) + 3*1e-5
 		# cryoturbation 5*10^(-4) (m2/yr)
 		cryo = para[1]*(16*1e-4 - 3*1e-5) + 3*1e-5
+
+		#  Q10 (unitless) 1.5
+		q10 = para[2]*(3 - 1.2) + 1.2
+		# Q10 when forzen (unitless) 1.5
+		fq10 = q10
+		# parameters used in vertical discretization of carbon inputs 10 (metre)
+		# efolding = para[3]*(1 - 0.0001) + 0.0001
+		efolding = para[3]*(1 - 0.1) + 0.1
+		# turnover time of CWD (yr) 3.3333
+		tau4cwd = para[4]*(6 - 1) + 1
+		# tau for metabolic litter (yr) 0.0541
+		tau4l1 = para[5]*(0.11 - 0.0001) + 0.0001
+		# tau for cellulose litter (yr) 0.2041
+		tau4l2 = para[6]*(0.3 - 0.1) + 0.1
+		# tau for lignin litter (yr)
+		tau4l3 = tau4l2
+		# tau for fast SOC (yr) 0.1370
+		tau4s1 = para[7]*(0.5 - 0.0001) + 0.0001
+		# tau for slow SOC (yr) 5
+		tau4s2 = para[8]*(10 - 1) + 1
+		# tau for passive SOC (yr) 222.222 [20,400]
+		tau4s3 = para[9]*(400 - 20) + 20
+		# fraction from l1 to s2, 0.45
+		fl1s1 = para[10]*(0.8 - 0.1) + 0.1
+		# fraction from l2 to s1, 0.5
+		fl2s1 = para[11]*(0.8 - 0.2) + 0.2
+		# fraction from l3 to s2, 0.5
+		fl3s2 = para[12]*(0.8 - 0.2) + 0.2
+		# fraction from s1 to s2, sand dependeted
+		fs1s2 = para[13]*(0.4 - 0.0001) + 0.0001
+		# fraction from s1 to s3, sand dependeted
+		fs1s3 = para[14]*(0.1 - 0.0001) + 0.0001
+		# fraction from s2 to s1, 0.42
+		fs2s1 = para[15]*(0.74 - 0.1) + 0.1
+		# fraction from s2 to s3, 0.03
+		fs2s3 = para[16]*(0.1 - 0.0001) + 0.0001
+		# fraction from s3 to s1, 0.45
+		fs3s1 = para[17]*(0.9 - 0.0001) + 0.0001
+		# fraction from cwd to l2, 0.76
+		fcwdl2 = para[18]*(1 - 0.5) + 0.5
+		
+		# water scaling factor
+		w_scaling = para[19]*(5 - 0.0001) + 0.0001
+		# beta to describe the shape of vertical profile
+		# beta = 0.95
+		# or fix it at first ~ 0.6/0.7
+		# beta = para[20]*(0.9 - 0.5) + 0.5
+		beta = para[20] *(0.9999 - 0.5) + 0.5
+	elif vertical_mixing == 'larger_prior':
+		prior_change_rate = 0.1
+		# diffusion (bioturbation) 10^(-4) (m2/yr)
+		bio = para[0]*(5*1e-4*(1+prior_change_rate) - 3*1e-5*(1-prior_change_rate)) + 3*1e-5*(1-prior_change_rate)
+		# cryoturbation 5*10^(-4) (m2/yr)
+		cryo = para[1]*(16*1e-4*(1+prior_change_rate) - 3*1e-5*(1-prior_change_rate)) + 3*1e-5*(1-prior_change_rate)
+
+		#  Q10 (unitless) 1.5
+		q10 = para[2]*(3*(1+prior_change_rate) - 1.2*(1-prior_change_rate)) + 1.2*(1-prior_change_rate)
+		# Q10 when forzen (unitless) 1.5
+		fq10 = q10
+		# parameters used in vertical discretization of carbon inputs 10 (metre)
+		# efolding = para[3]*(1 - 0.0001) + 0.0001
+		efolding = para[3]*(1 - 0.1*(1-prior_change_rate)) + 0.1*(1-prior_change_rate)
+		# turnover time of CWD (yr) 3.3333
+		tau4cwd = para[4]*(6*(1+prior_change_rate) - 1*(1-prior_change_rate)) + 1*(1-prior_change_rate)
+		# tau for metabolic litter (yr) 0.0541
+		tau4l1 = para[5]*(0.11*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# tau for cellulose litter (yr) 0.2041
+		tau4l2 = para[6]*(0.3*(1+prior_change_rate) - 0.1*(1-prior_change_rate)) + 0.1*(1-prior_change_rate)
+		# tau for lignin litter (yr)
+		tau4l3 = tau4l2
+		# tau for fast SOC (yr) 0.1370
+		tau4s1 = para[7]*(0.5*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# tau for slow SOC (yr) 5
+		tau4s2 = para[8]*(10*(1+prior_change_rate) - 1*(1-prior_change_rate)) + 1*(1-prior_change_rate)
+		# tau for passive SOC (yr) 222.222
+		tau4s3 = para[9]*(400*(1+prior_change_rate) - 20*(1-prior_change_rate)) + 20*(1-prior_change_rate)
+		# fraction from l1 to s2, 0.45
+		fl1s1 = para[10]*(0.8*(1+prior_change_rate) - 0.1*(1-prior_change_rate)) + 0.1*(1-prior_change_rate)
+		# fraction from l2 to s1, 0.5
+		fl2s1 = para[11]*(0.8*(1+prior_change_rate) - 0.2*(1-prior_change_rate)) + 0.2*(1-prior_change_rate)
+		# fraction from l3 to s2, 0.5
+		fl3s2 = para[12]*(0.8*(1+prior_change_rate) - 0.2*(1-prior_change_rate)) + 0.2*(1-prior_change_rate)
+		# fraction from s1 to s2, sand dependeted
+		fs1s2 = para[13]*(0.4*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# fraction from s1 to s3, sand dependeted
+		fs1s3 = para[14]*(0.1*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# fraction from s2 to s1, 0.42
+		fs2s1 = para[15]*(0.74*(1+prior_change_rate) - 0.1*(1-prior_change_rate)) + 0.1*(1-prior_change_rate)
+		# fraction from s2 to s3, 0.03
+		fs2s3 = para[16]*(0.1*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# fraction from s3 to s1, 0.45
+		fs3s1 = para[17]*(0.9*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# fraction from cwd to l2, 0.76
+		fcwdl2 = para[18]*(1 - 0.5*(1-prior_change_rate)) + 0.5*(1-prior_change_rate)
+		
+		# water scaling factor
+		w_scaling = para[19]*(5*(1+prior_change_rate) - 0.0001*(1-prior_change_rate)) + 0.0001*(1-prior_change_rate)
+		# beta to describe the shape of vertical profile
+		# beta = 0.95
+		# or fix it at first ~ 0.6/0.7
+		# beta = para[20]*(0.9 - 0.5) + 0.5
+		beta = para[20] *(0.9999 - 0.5*(1-prior_change_rate)) + 0.5*(1-prior_change_rate)
+	elif vertical_mixing == 'smaller_prior':
+		prior_change_rate = 0.1
+		# diffusion (bioturbation) 10^(-4) (m2/yr)
+		bio = para[0]*(5*1e-4*(1-prior_change_rate) - 3*1e-5*(1+prior_change_rate)) + 3*1e-5*(1+prior_change_rate)
+		# cryoturbation 5*10^(-4) (m2/yr)
+		cryo = para[1]*(16*1e-4*(1-prior_change_rate) - 3*1e-5*(1+prior_change_rate)) + 3*1e-5*(1+prior_change_rate)
+
+		#  Q10 (unitless) 1.5
+		q10 = para[2]*(3*(1+prior_change_rate) - 1.2*(1-prior_change_rate)) + 1.2*(1-prior_change_rate)
+		# Q10 when forzen (unitless) 1.5
+		fq10 = q10
+		# parameters used in vertical discretization of carbon inputs 10 (metre)
+		# efolding = para[3]*(1 - 0.0001) + 0.0001
+		efolding = para[3]*(1*(1-prior_change_rate) - 0.1*(1+prior_change_rate)) + 0.1*(1+prior_change_rate)
+		# turnover time of CWD (yr) 3.3333
+		tau4cwd = para[4]*(6*(1-prior_change_rate) - 1*(1+prior_change_rate)) + 1*(1+prior_change_rate)
+		# tau for metabolic litter (yr) 0.0541
+		tau4l1 = para[5]*(0.11*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# tau for cellulose litter (yr) 0.2041
+		tau4l2 = para[6]*(0.3*(1-prior_change_rate) - 0.1*(1+prior_change_rate)) + 0.1*(1+prior_change_rate)
+		# tau for lignin litter (yr)
+		tau4l3 = tau4l2
+		# tau for fast SOC (yr) 0.1370
+		tau4s1 = para[7]*(0.5*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# tau for slow SOC (yr) 5
+		tau4s2 = para[8]*(10*(1-prior_change_rate) - 1*(1+prior_change_rate)) + 1*(1+prior_change_rate)
+		# tau for passive SOC (yr) 222.222
+		tau4s3 = para[9]*(400*(1-prior_change_rate) - 20*(1+prior_change_rate)) + 20*(1+prior_change_rate)
+		# fraction from l1 to s2, 0.45
+		fl1s1 = para[10]*(0.8*(1-prior_change_rate) - 0.1*(1+prior_change_rate)) + 0.1*(1+prior_change_rate)
+		# fraction from l2 to s1, 0.5
+		fl2s1 = para[11]*(0.8*(1-prior_change_rate) - 0.2*(1+prior_change_rate)) + 0.2*(1+prior_change_rate)
+		# fraction from l3 to s2, 0.5
+		fl3s2 = para[12]*(0.8*(1-prior_change_rate) - 0.2*(1+prior_change_rate)) + 0.2*(1+prior_change_rate)
+		# fraction from s1 to s2, sand dependeted
+		fs1s2 = para[13]*(0.4*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# fraction from s1 to s3, sand dependeted
+		fs1s3 = para[14]*(0.1*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# fraction from s2 to s1, 0.42
+		fs2s1 = para[15]*(0.74*(1-prior_change_rate) - 0.1*(1+prior_change_rate)) + 0.1*(1+prior_change_rate)
+		# fraction from s2 to s3, 0.03
+		fs2s3 = para[16]*(0.1*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# fraction from s3 to s1, 0.45
+		fs3s1 = para[17]*(0.9*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# fraction from cwd to l2, 0.76
+		fcwdl2 = para[18]*(1*(1-prior_change_rate) - 0.5*(1+prior_change_rate)) + 0.5*(1+prior_change_rate)
+		
+		# water scaling factor
+		w_scaling = para[19]*(5*(1-prior_change_rate) - 0.0001*(1+prior_change_rate)) + 0.0001*(1+prior_change_rate)
+		# beta to describe the shape of vertical profile
+		# beta = 0.95
+		# or fix it at first ~ 0.6/0.7
+		# beta = para[20]*(0.9 - 0.5) + 0.5
+		beta = para[20] *(0.9999*(1-prior_change_rate) - 0.5*(1+prior_change_rate)) + 0.5*(1+prior_change_rate)
 	else:
 		# use the simple alternative tri-matrix
 		slope = para[0]*((0) - (-3)) + (-3)  # increase, decrease, or no change of diffusion rate with depth
 		# intercept = para[1]*((-6) - (-10)) + (-10)
 		intercept = para[1]*((-2) - (-12)) + (-12)
 
-	#  Q10 (unitless) 1.5
-	q10 = para[2]*(3 - 1.2) + 1.2
-	# Q10 when forzen (unitless) 1.5
-	fq10 = q10
-	# parameters used in vertical discretization of carbon inputs 10 (metre)
-	# efolding = para[3]*(1 - 0.0001) + 0.0001
-	efolding = para[3]*(1 - 0.1) + 0.1
-	# turnover time of CWD (yr) 3.3333
-	tau4cwd = para[4]*(6 - 1) + 1
-	# tau for metabolic litter (yr) 0.0541
-	tau4l1 = para[5]*(0.11 - 0.0001) + 0.0001
-	# tau for cellulose litter (yr) 0.2041
-	tau4l2 = para[6]*(0.3 - 0.1) + 0.1
-	# tau for lignin litter (yr)
-	tau4l3 = tau4l2
-	# tau for fast SOC (yr) 0.1370
-	tau4s1 = para[7]*(0.5 - 0.0001) + 0.0001
-	# tau for slow SOC (yr) 5
-	tau4s2 = para[8]*(10 - 1) + 1
-	# tau for passive SOC (yr) 222.222
-	tau4s3 = para[9]*(400 - 20) + 20
-	# fraction from l1 to s2, 0.45
-	fl1s1 = para[10]*(0.8 - 0.1) + 0.1
-	# fraction from l2 to s1, 0.5
-	fl2s1 = para[11]*(0.8 - 0.2) + 0.2
-	# fraction from l3 to s2, 0.5
-	fl3s2 = para[12]*(0.8 - 0.2) + 0.2
-	# fraction from s1 to s2, sand dependeted
-	fs1s2 = para[13]*(0.4 - 0.0001) + 0.0001
-	# fraction from s1 to s3, sand dependeted
-	fs1s3 = para[14]*(0.1 - 0.0001) + 0.0001
-	# fraction from s2 to s1, 0.42
-	fs2s1 = para[15]*(0.74 - 0.1) + 0.1
-	# fraction from s2 to s3, 0.03
-	fs2s3 = para[16]*(0.1 - 0.0001) + 0.0001
-	# fraction from s3 to s1, 0.45
-	fs3s1 = para[17]*(0.9 - 0.0001) + 0.0001
-	# fraction from cwd to l2, 0.76
-	fcwdl2 = para[18]*(1 - 0.5) + 0.5
-	
-	# water scaling factor
-	w_scaling = para[19]*(5 - 0.0001) + 0.0001
-	# beta to describe the shape of vertical profile
-	# beta = 0.95
-	# or fix it at first ~ 0.6/0.7
-	# beta = para[20]*(0.9 - 0.5) + 0.5
-	beta = para[20] *(0.9999 - 0.5) + 0.5
-	# beta = 0.7 *(0.9 - 0.5) + 0.5
-	# beta = 0.8
+		#  Q10 (unitless) 1.5
+		q10 = para[2]*(3 - 1.2) + 1.2
+		# Q10 when forzen (unitless) 1.5
+		fq10 = q10
+		# parameters used in vertical discretization of carbon inputs 10 (metre)
+		# efolding = para[3]*(1 - 0.0001) + 0.0001
+		efolding = para[3]*(1 - 0.1) + 0.1
+		# turnover time of CWD (yr) 3.3333
+		tau4cwd = para[4]*(6 - 1) + 1
+		# tau for metabolic litter (yr) 0.0541
+		tau4l1 = para[5]*(0.11 - 0.0001) + 0.0001
+		# tau for cellulose litter (yr) 0.2041
+		tau4l2 = para[6]*(0.3 - 0.1) + 0.1
+		# tau for lignin litter (yr)
+		tau4l3 = tau4l2
+		# tau for fast SOC (yr) 0.1370
+		tau4s1 = para[7]*(0.5 - 0.0001) + 0.0001
+		# tau for slow SOC (yr) 5
+		tau4s2 = para[8]*(10 - 1) + 1
+		# tau for passive SOC (yr) 222.222
+		tau4s3 = para[9]*(400 - 20) + 20
+		# fraction from l1 to s2, 0.45
+		fl1s1 = para[10]*(0.8 - 0.1) + 0.1
+		# fraction from l2 to s1, 0.5
+		fl2s1 = para[11]*(0.8 - 0.2) + 0.2
+		# fraction from l3 to s2, 0.5
+		fl3s2 = para[12]*(0.8 - 0.2) + 0.2
+		# fraction from s1 to s2, sand dependeted
+		fs1s2 = para[13]*(0.4 - 0.0001) + 0.0001
+		# fraction from s1 to s3, sand dependeted
+		fs1s3 = para[14]*(0.1 - 0.0001) + 0.0001
+		# fraction from s2 to s1, 0.42
+		fs2s1 = para[15]*(0.74 - 0.1) + 0.1
+		# fraction from s2 to s3, 0.03
+		fs2s3 = para[16]*(0.1 - 0.0001) + 0.0001
+		# fraction from s3 to s1, 0.45
+		fs3s1 = para[17]*(0.9 - 0.0001) + 0.0001
+		# fraction from cwd to l2, 0.76
+		fcwdl2 = para[18]*(1 - 0.5) + 0.5
+		
+		# water scaling factor
+		w_scaling = para[19]*(5 - 0.0001) + 0.0001
+		# beta to describe the shape of vertical profile
+		# beta = 0.95
+		# or fix it at first ~ 0.6/0.7
+		# beta = para[20]*(0.9 - 0.5) + 0.5
+		beta = para[20] *(0.9999 - 0.5) + 0.5
+
+
+		# beta = 0.7 *(0.9 - 0.5) + 0.5
+		# beta = 0.8
 
 	# Separate intercept for "leach" (downward transport)
 	if vertical_mixing == 'simple_two_intercepts':
@@ -452,7 +610,7 @@ def fun_matrix_clm5(para, frocing_steady_state, vertical_mixing, vectorized='yes
 		timesteply_altmax_current_profile = altmax_current_profile_steady_state[itimestep]
 		timesteply_altmax_lastyear_profile = altmax_lastyear_profile_steady_state[itimestep]
 
-		if vertical_mixing == 'original':
+		if vertical_mixing == 'original' or vertical_mixing == 'larger_prior' or vertical_mixing == 'smaller_prior':
 			if vectorized in ['no', 'compare']:
 				# tri_ma_old_start = time.time()
 				tri_ma = tri_ma_old = tri_matrix_old(timesteply_nbedrock, timesteply_altmax_current_profile, timesteply_altmax_lastyear_profile, bio, adv, cryo)

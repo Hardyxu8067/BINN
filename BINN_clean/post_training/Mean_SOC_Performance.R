@@ -32,7 +32,9 @@ Sys.setenv(PROJ_LIB = "C:/Program Files/R/R-4.3.3/library/sf/proj")
 
 ## Jet colorbar function
 jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-diff.colors <- colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0", "white", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B"))
+# diff.colors <- colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0", "white", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B"))
+# From Orange to Blue
+diff.colors <- colorRampPalette(c("#bf5700", "#f0954b", "#f9bd8c", "#f6f6f6", "#92C5DE", "#4393c3", "#2166ac"))
 
 #############################################################################
 # function to increase vertical spacing between legend keys
@@ -293,7 +295,7 @@ legend_upper_diff_soc = max(current_data_binn_us$normalized_soc_diff, na.rm = TR
 # Plot the difference map for SOC
 map_diff_soc = ggplot() +
 	# geom_tile(data = current_data_binn_us, aes(x = lon, y = lat, fill = normalized_soc_diff), height = 60000, width = 60000, na.rm = TRUE) +
-	geom_point(data = current_data_binn_us, aes(x = lon, y = lat, color = normalized_soc_diff), size = 8) +
+	geom_point(data = current_data_binn_us, aes(x = lon, y = lat, color = normalized_soc_diff), size = 8, alpha = 0.8) +
 	# scale_fill_gradientn(name = 'SOC Difference', colours = rev(viridis(15)), na.value="transparent", limits = c(legend_lower_diff_soc, legend_upper_diff_soc), trans = 'identity', oob = scales::squish) +
 	# Use diff.colors for the colorbar
 	scale_color_gradientn(name = 'SOC Difference', colours = diff.colors(15), na.value="transparent", limits = c(legend_lower_diff_soc, legend_upper_diff_soc), trans = 'identity', oob = scales::squish) +
@@ -609,7 +611,7 @@ legend_upper_diff_soc = max(current_diff_mean_us$normalized_soc_diff, na.rm = TR
 # Plot the difference map for SOC
 map_diff_soc = ggplot() +
 	# geom_tile(data = current_data_binn_us, aes(x = lon, y = lat, fill = normalized_soc_diff), height = 60000, width = 60000, na.rm = TRUE) +
-	geom_point(data = current_diff_mean_us, aes(x = lon, y = lat, color = normalized_soc_diff), size = 3) +
+	geom_point(data = current_diff_mean_us, aes(x = lon, y = lat, color = normalized_soc_diff), size = 3, alpha = 0.8) +
 	# scale_fill_gradientn(name = 'SOC Difference', colours = rev(viridis(15)), na.value="transparent", limits = c(legend_lower_diff_soc, legend_upper_diff_soc), trans = 'identity', oob = scales::squish) +
 	# Use diff.colors for the colorbar
 	scale_color_gradientn(name = 'SOC Difference', colours = diff.colors(15), na.value="transparent", limits = c(legend_lower_diff_soc, legend_upper_diff_soc), trans = 'identity', oob = scales::squish) +
@@ -652,7 +654,8 @@ map_diff_cv_soc = ggplot() +
   geom_point(
     data = current_diff_cv_us,
     aes(x = lon, y = lat, color = pmin(cv_soc_diff, cap_values)),  # cap values >1000
-    size = 3
+    size = 3,
+    alpha = 0.8
   ) +
 	scale_color_gradientn(
   name = 'SOC Difference',
@@ -768,3 +771,9 @@ grid_plots <- plot_grid(top_row, bottom_row, ncol = 1, labels = c(''), label_siz
 jpeg(paste(cross_validation_dir_output, 'SOC_Uncertainty_map_scatter_box_plot.jpg', sep = ''), width = 32, height = 50, units = 'in', res = 300)
 print(grid_plots)
 dev.off() 
+
+# Report the mean and standard deviation of the cross_validation_soc_nse
+mean_nse = mean(Mean_SOC_NSE, na.rm = TRUE)
+sd_nse = sd(Mean_SOC_NSE, na.rm = TRUE)
+print(paste('Mean NSE:', round(mean_nse, 3)))
+print(paste('Standard Deviation of NSE:', round(sd_nse, 3)))

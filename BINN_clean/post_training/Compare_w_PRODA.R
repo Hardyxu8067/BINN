@@ -35,7 +35,8 @@ Sys.setenv(PROJ_LIB = "C:/Program Files/R/R-4.3.3/library/sf/proj")
 
 ## Jet colorbar function
 jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-diff.colors <- colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0", "#ffffff", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B"))
+# diff.colors <- colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0", "#ffffff", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B"))
+diff.colors <- colorRampPalette(c("#bf5700", "#f0954b", "#f9bd8c", "#dddddd", "#92C5DE", "#4393c3", "#2166ac"))
 
 #############################################################################
 # function to increase vertical spacing between legend keys
@@ -63,7 +64,7 @@ GeomBar$draw_key = draw_key_polygon3
 #############################################################################
 # Data Path
 #############################################################################
-cross_validation_folder = 'Compare_With_PRODA'
+cross_validation_folder = 'Cross_Validation_PRODA_smaller_weight'
 cross_validation_dir_input = paste0('D:/Research/BINN/BINN_output/neural_network/', cross_validation_folder, '/')
 cross_validation_dir_output = paste0('D:/Research/BINN/BINN_output/neural_network/', cross_validation_folder, '/Output/')
 

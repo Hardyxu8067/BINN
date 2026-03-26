@@ -17,7 +17,7 @@ library(proj4)
 rm(list = ls())
 
 setwd('D:/Research/BINN/BINN_output/plot/')
-Sys.setenv(PROJ_LIB = "C:/Users/hx293/AppData/Local/R/win-library/4.3/sf/proj")
+Sys.setenv(PROJ_LIB = "C:/Program Files/R/R-4.3.3/library/sf/proj")
 
 ## Jet colorbar function
 jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
@@ -51,14 +51,13 @@ GeomBar$draw_key = draw_key_polygon3
 #############################################################################
 # Data Path
 #############################################################################
-cross_validation_folder = 'Cross_Validation_seed_111'
+cross_validation_folder = 'Cross_Validation_PRODA_smaller_weight'
 cross_validation_dir_input = paste0('D:/Research/BINN/BINN_output/neural_network/', cross_validation_folder, '/')
 cross_validation_dir_output = paste0('D:/Research/BINN/BINN_output/neural_network/', cross_validation_folder, '/Output/')
 # Get the list of all the folders in the cross validation directory
 cross_validation_dir_list = list.dirs(cross_validation_dir_input, full.names = FALSE, recursive = FALSE)
 # Exclude the folder of Output
 cross_validation_dir_list = cross_validation_dir_list[!cross_validation_dir_list %in% 'Output']
-
 
 # PRODA data path
 data_dir_PRODA = 'D:/Nutstore/Research_Data/BINN/Server_Script/post_training/soc_component_proda/soc_component_proda/'
@@ -73,21 +72,29 @@ if (!dir.exists(cross_validation_dir_output)) {
 #################################################################################
 # Bulk Processes
 #################################################################################
-
 ## BINN ##
 # Import lon and lat from one of the cross validation
 binn_lon = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[1], '/Prediction', '/nn_grid_', 'lons_', 
                             cross_validation_dir_list[1], '.csv', sep = ''), header = FALSE)
 binn_lat = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[1], '/Prediction', '/nn_grid_', 'lats_',
                             cross_validation_dir_list[1], '.csv', sep = ''), header = FALSE)
-current_data_binn = cbind(binn_lon, binn_lat)
-colnames(current_data_binn) = c('lon', 'lat')
+current_data_loc = cbind(binn_lon, binn_lat)
+colnames(current_data_loc) = c('lon', 'lat')
 
 # load BINN data: bulk_A, bulk_I, bulk_K, bulk_V, bulk_xi, carbon_input, litter_fraction
-input_matrix = c('bulk_A', 'bulk_I', 'bulk_K', 'bulk_V', 'bulk_xi', 'carbon_input', 'litter_fraction')
+input_matrix = c('bulk_A', 'bulk_I', 'bulk_K_all', 'bulk_K_soc', 'bulk_K_litter', 'bulk_V', 'bulk_xi', 'carbon_input', 'litter_fraction')
+para_names = c('diffus', 'cryo', 'q10', 'efolding', 'taucwd', 'taul1', 'taul2', 'tau4s1', 'tau4s2', 'tau4s3', 'fl1s1', 'fl2s1', 'fl3s2', 'fs1s2', 'fs1s3', 'fs2s1', 'fs2s3', 'fs3s1', 'fcwdl2', 'w-scaling', 'beta')
 
 # Average accross all the cross validation results for Bulk Processes
 bulk_process_binn = array(NA, dim = c(nrow(binn_lon), length(input_matrix), length(cross_validation_dir_list)))
+bulk_process_clm = array(NA, dim = c(nrow(binn_lon), length(input_matrix), length(cross_validation_dir_list)))
+
+para_binn = array(NA, dim = c(nrow(binn_lon), length(para_names), length(cross_validation_dir_list)))
+para_clm = array(NA, dim = c(nrow(binn_lon), length(para_names), length(cross_validation_dir_list)))
+
+dim(para_binn)
+dim(para_clm)
+
 icross_valid = 1
 for (icross_valid in 1:length(cross_validation_dir_list)) {
   for (i in 1:length(input_matrix)) {
@@ -95,71 +102,38 @@ for (icross_valid in 1:length(cross_validation_dir_list)) {
     if (input_matrix[i] == 'bulk_I') {
       temp_bulk = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[icross_valid], '/Prediction', '/nn_grid_pred_para_',
                                  cross_validation_dir_list[icross_valid], '.csv', sep = ''), header = FALSE)
-      temp_bulk = as.data.frame(temp_bulk[ , 21])
-      bulk_process_binn[ , i, icross_valid] = temp_bulk[ , 1]
-    } else {
-      temp_bulk = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[icross_valid], '/Prediction', '/nn_grid_bulk_', input_matrix[i], '_',
+      para_binn[ , , icross_valid] = as.matrix(temp_bulk[ , 1:length(para_names)])
+      bulk_process_binn[ , i, icross_valid] = as.data.frame(temp_bulk[ , 21])[ , 1]
+      temp_para = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[icross_valid], '/PRODA_Bulk', '/PRODA_bulk_simu_para_',
                                  cross_validation_dir_list[icross_valid], '.csv', sep = ''), header = FALSE)
-      bulk_process_binn[ , i, icross_valid] = temp_bulk[ , 1]
+      para_clm[ , , icross_valid] = as.matrix(temp_para[ , 1:length(para_names)])
+      bulk_process_clm[ , i, icross_valid] = as.data.frame(temp_para[ , 21])[ , 1]
+    } else {
+      temp_bulk_binn = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[icross_valid], '/Prediction', '/nn_grid_bulk_', input_matrix[i], '_',
+                                 cross_validation_dir_list[icross_valid], '.csv', sep = ''), header = FALSE)
+      bulk_process_binn[ , i, icross_valid] = temp_bulk_binn[ , 1]
+      temp_bulk_clm = read.csv(paste(cross_validation_dir_input, cross_validation_dir_list[icross_valid], '/PRODA_Bulk', '/PRODA_bulk_simu_', input_matrix[i], '_',
+                                 cross_validation_dir_list[icross_valid], '.csv', sep = ''), header = FALSE)
+      bulk_process_clm[ , i, icross_valid] = temp_bulk_clm[ , 1]
     }
   }
 }
 
 # Calculate the mean of the bulk processes
 bulk_process_mean_binn = apply(bulk_process_binn, c(1, 2), median, na.rm = TRUE)
-current_data_binn = cbind(current_data_binn, bulk_process_mean_binn)
-dim(bulk_process_mean_binn)
-dim(current_data_binn)
-# Remove the NA values
-current_data_binn = current_data_binn[complete.cases(current_data_binn), ]
-dim(current_data_binn)
-
-
-## PRODA ##
-model_name = 'cesm2_clm5_cen_vr_v2'
-nn_exp_name = 'exp_pc_cesm2_23'
-time_domain = 'whole_time'
-
-valid_grid_loc_clm = read.csv(paste(data_dir_loc, 'neural_networking/valid_grid_loc_', model_name, '_', time_domain, '_', nn_exp_name, '_cross_valid_0_', as.character(1), '.csv', sep = ''), header = FALSE)
-valid_grid_loc_clm = valid_grid_loc_clm$V1
-
-global_lat_lon_clm = readMat(paste(data_dir_PRODA, 'soc_simu_grid_info_', model_name, '_', nn_exp_name, '_cross_valid_0_', as.character(1), '.mat', sep = ''))
-global_lat_lon_clm = global_lat_lon_clm$var.data.middle[ , 1:2]
-colnames(global_lat_lon_clm) = c('lon', 'lat')
-
-bulk_process_clm = array(NA, dim = c(nrow(global_lat_lon_clm), 7, 10))
-
-icross_valid = 2
-for (icross_valid in 1:10) {
-  global_simu = readMat(paste(data_dir_PRODA, 'bulk_process_summary_', model_name, '_', nn_exp_name, '_cross_valid_0_', as.character(icross_valid), '.mat', sep = ''))
-  bulk_process_clm[ , , icross_valid] = global_simu$var.data.middle[ , c(1:7)]
-}
 bulk_process_mean_clm = apply(bulk_process_clm, c(1, 2), median, na.rm = TRUE)
+para_binn_mean = apply(para_binn, c(1, 2), median, na.rm = TRUE)
+para_clm_mean = apply(para_clm, c(1, 2), median, na.rm = TRUE)
 
-# print the head of the data
-head(bulk_process_mean_clm)
-dim(bulk_process_mean_clm)
+current_data_binn = cbind(current_data_loc, bulk_process_mean_binn)
+current_data_clm = cbind(current_data_loc, bulk_process_mean_clm)
+colnames(current_data_binn) = c('lon', 'lat', input_matrix)
+colnames(current_data_clm) = c('lon', 'lat', input_matrix)
 
-# Change the bulk I (the 2nd column) to the 21st column of the average among the 10 cross validation
-icross_para = 1
-grid_PRODA_para = array(NA, dim = c(nrow(global_lat_lon_clm), 10)) 
-for (icross_para in 1:10) {
-  temp_para = read.csv(paste(data_dir_loc, '/neural_networking/grid_para_result_', model_name, '_', time_domain, '_', nn_exp_name, '_cross_valid_0_', as.character(icross_para), '.csv', sep = ''), header = FALSE)
-  temp_para = as.data.frame(temp_para[ , 21])
-  grid_PRODA_para[ , icross_para] = temp_para[ , 1]
-}
-
-# Check the dimension of the data
-head(grid_PRODA_para)
-dim(grid_PRODA_para)
-
-# Switch the second column of the bulk_process_mean_clm to the average of each row of grid_PRODA_para
-bulk_process_mean_clm[ , 2] = apply(grid_PRODA_para, 1, mean, na.rm = TRUE)
-
-# Check the dimension of the data
-head(bulk_process_mean_clm)
-dim(bulk_process_mean_clm)
-
+dim(current_data_binn)
+dim(current_data_clm)
+dim(para_binn_mean)
+dim(para_clm_mean)
 
 #################################################################################
 # plot figures
@@ -199,8 +173,6 @@ lat_limits_albers = project(xy = as.matrix(lat_limits), proj = coord_info)
 
 ## Proda
 # process map clm
-current_data_clm = data.frame(cbind(global_lat_lon_clm, bulk_process_mean_clm))
-colnames(current_data_clm) = c('lon', 'lat', 'A', 'I', 'K', 'V', 'Xi', 'NPP', 'F')
 lon_lat_transfer = project(xy = as.matrix(current_data_clm[ , c('lon', 'lat')]), proj = coord_info) 
 current_data_clm[ , c('lon', 'lat')] = lon_lat_transfer
 # plot data only within the shapefile constraint
@@ -217,9 +189,9 @@ current_data_clm_us <- current_data_clm_us[c("lon", "lat", setdiff(names(current
 # remove the geometry column
 current_data_clm_us <- st_drop_geometry(current_data_clm_us)
 # remove all column after the 9th column
-current_data_clm_us <- current_data_clm_us[ , 1:9]
+current_data_clm_us <- current_data_clm_us[ , 1:(length(input_matrix) + 2)]
 head(current_data_clm_us)
-tail(current_data_clm_us)
+dim(current_data_clm_us)
 
 
 
@@ -240,7 +212,7 @@ current_data_binn_us <- current_data_binn_us[c("lon", "lat", setdiff(names(curre
 # remove the geometry column
 current_data_binn_us <- st_drop_geometry(current_data_binn_us)
 # remove all column after the 9th column
-current_data_binn_us <- current_data_binn_us[ , 1:9]
+current_data_binn_us <- current_data_binn_us[ , 1:(length(input_matrix) + 2)]
 
 # Select the interested rows in both data based on the lon and lat
 
@@ -262,17 +234,22 @@ dim(current_data_binn_us)
 
 ####################################################################
 
-process_scale_option = c('identity', 'identity', 'identity', 'identity', 'identity', 'identity', 'identity', 'identity')
+process_scale_option = c('identity', 'identity', 'identity', 'identity', 'identity', 'identity', 'identity', 'identity', 'identity')
 
 process_name =  c('Carbon Transfer Efficiency', 
                   'Carbon Input Allocation', 
                   'Baseline Decomposition', 
+                  'Baseline Decomposition for SOC',
+                  'Baseline Decomposition for Litter',
                   'Vertical Transport Rate',
                   'Environmental Modifier', 
                   'Plant Carbon Inputs', 
                   'Litter to Mineral Soil Fraction')
+
 process_unit = c('unitless',
                  'unitless', 
+                 expression(paste('yr'^'-1', sep = '')),
+                 expression(paste('yr'^'-1', sep = '')),
                  expression(paste('yr'^'-1', sep = '')),
                  expression(paste('yr'^'-1', sep = '')),
                  'unitless', 
@@ -289,16 +266,16 @@ for (ipara in 1:length(process_name)){
   middle_data_binn = current_data_binn_us[ , c(1:2, 2 + ipara)]
   colnames(middle_data_binn) = c('lon', 'lat', 'process')
   
-  legend_lower_binn = apply(current_data_binn_us[ , c(3:9)], 2, quantile, prob = 0.05, na.rm = TRUE)
-  legend_upper_binn = apply(current_data_binn_us[ , c(3:9)], 2, quantile, prob = 0.95, na.rm = TRUE)
+  legend_lower_binn = apply(current_data_binn_us[ , c(3:(length(process_name)+2))], 2, quantile, prob = 0.05, na.rm = TRUE)
+  legend_upper_binn = apply(current_data_binn_us[ , c(3:(length(process_name)+2))], 2, quantile, prob = 0.95, na.rm = TRUE)
 
 
   # PRODA
   middle_data_clm = current_data_clm_us[ , c(1, 2, (ipara+2))]
   colnames(middle_data_clm) = c('lon', 'lat', 'process')
   
-  legend_lower_clm = apply(current_data_clm_us[ , c(3:9)], 2, quantile, prob = 0.05, na.rm = TRUE)
-  legend_upper_clm = apply(current_data_clm_us[ , c(3:9)], 2, quantile, prob = 0.95, na.rm = TRUE)
+  legend_lower_clm = apply(current_data_clm_us[ , c(3:(length(process_name)+2))], 2, quantile, prob = 0.05, na.rm = TRUE)
+  legend_upper_clm = apply(current_data_clm_us[ , c(3:(length(process_name)+2))], 2, quantile, prob = 0.95, na.rm = TRUE)
   
   legend_lower_clm = apply(rbind(legend_lower_clm, legend_lower_binn), 2, min)
   legend_upper_clm = apply(rbind(legend_upper_clm, legend_upper_binn), 2, max)
@@ -311,8 +288,11 @@ for (ipara in 1:length(process_name)){
   # legend_upper_clm[6] = ceiling(legend_upper_clm[6] / 200) * 200
 
   # Set the same legend for all processes
-  legend_lower_clm[1:5] = 0
-  legend_upper_clm[1:5] = 1
+  legend_lower_clm[1:4] = 0
+  legend_upper_clm[1:4] = 1
+
+  legend_lower_clm[6:(length(process_name)-2)] = 0
+  legend_upper_clm[6:(length(process_name)-2)] = 1
 
   legend_lower_binn = legend_lower_clm
   legend_upper_binn = legend_upper_clm
@@ -388,13 +368,10 @@ for (ipara in 1:length(process_name)){
   # Calculate the correlation
   corr_process_middle = cor.test(middle_data_corr$clm, middle_data_corr$binn, na.rm = TRUE)
 	
-	if (ipara == 3) {
-		limit_clm = c(0.001, 1)
-		limit_binn = c(0.001, 1)
-	} else {
-		limit_clm = quantile(middle_data_clm$process, probs = c(0, 1), na.rm = TRUE)
-		limit_binn = quantile(middle_data_binn$process, probs = c(0, 1), na.rm = TRUE)
-	}
+
+  limit_clm = quantile(middle_data_clm$process, probs = c(0, 1), na.rm = TRUE)
+  limit_binn = quantile(middle_data_binn$process, probs = c(0, 1), na.rm = TRUE)
+
 	limit_clm = c(min(limit_clm[1], limit_binn[1]), max(limit_clm[2], limit_binn[2]))
 	limit_binn = limit_clm
 	
@@ -432,21 +409,25 @@ for (ipara in 1:length(process_name)){
 }
 
 
-jpeg(paste(cross_validation_dir_output, 'Bulk_Process.jpeg', sep = ''), width = 35, height = 40, units = 'in', res = 300)
-plot_grid(p_binn1, p_clm1, p_corr1, NULL, 
-          p_binn3, p_clm3, p_corr3, NULL, 
-          p_binn5, p_clm5, p_corr5, NULL, 
-          p_binn2, p_clm2, p_corr2, NULL, 
-          p_binn4, p_clm4, p_corr4, NULL, 
-          p_binn6, p_clm6, p_corr6, NULL, 
-          nrow = 6, ncol = 4 ,
+jpeg(paste(cross_validation_dir_output, 'Bulk_Process.jpeg', sep = ''), width = 42, height = 50, units = 'in', res = 300)
+plot_grid(p_binn1, p_clm1, p_corr1, NULL,
+          p_binn3, p_clm3, p_corr3, NULL,
+          p_binn7, p_clm7, p_corr7, NULL, 
+          p_binn2, p_clm2, p_corr2, NULL,   
+          # p_binn4, p_clm4, p_corr4, NULL, 
+          # p_binn5, p_clm5, p_corr5, NULL, 
+          p_binn6, p_clm6, p_corr6, NULL,       
+          p_binn8, p_clm8, p_corr8, NULL,
+          ncol = 4 ,
           rel_widths = c(3, 3, 3, 0.10),
           labels = c('(a)', '(b)', '(c)', ' ',
                      '(d)', '(e)', '(f)', ' ',
                      '(g)', '(h)', '(i)', ' ',
                      '(j)', '(k)', '(l)', ' ',
                      '(m)', '(n)', '(o)', ' ',
-                     '(p)', '(q)', '(r)', ' '),
+                     '(p)', '(q)', '(r)', ' ',
+                     '(s)', '(t)', '(u)', ' ',
+                      '(v)', '(w)', '(x)', ' '),
           label_size = 50,
           label_x = -0.02, label_y = 1.02,
           label_fontfamily = 'Arial',
@@ -455,12 +436,63 @@ plot_grid(p_binn1, p_clm1, p_corr1, NULL,
 dev.off()
 
 jpeg(paste(cross_validation_dir_output, 'Litter_Fraction.jpeg',sep = ''), width = 36, height = 10, units = 'in', res = 300)
-plot_grid(p_binn7, p_clm7, p_corr7, NULL, 
+plot_grid(p_binn9, p_clm9, p_corr9, NULL, 
           nrow = 1, ncol = 4 ,
           rel_widths = c(3, 3, 3, 0.10),
           labels = c('a', 'b', 'c', ' '),
           label_size = 70,
           label_x = 0.05, label_y = 1.02,
+          label_fontfamily = 'Arial',
+          label_fontface = 'bold'
+)
+dev.off()
+
+####################################################################
+# Plot the correlation between BINN and PRODA parameters
+####################################################################
+for (ipara in 1:length(para_names)) {
+  middle_data_corr = cbind(para_clm_mean[ , ipara], para_binn_mean[ , ipara])
+  middle_data_corr = data.frame(middle_data_corr)
+  colnames(middle_data_corr) = c('clm', 'binn')
+  
+  corr_para_middle = cor.test(middle_data_corr$clm, middle_data_corr$binn, na.rm = TRUE)
+  
+  p_corr_para =
+    ggplot() + 
+    # stat_bin_hex(data = middle_data_corr, aes(x = clm, y = binn), bins = 100) +
+    # scale_fill_gradientn(name = 'Count', colors = viridis(7), trans = 'identity', oob = scales::squish) +
+    # geom_abline(slope = 1, intercept = 0, size = 2, color = 'black') +
+    stat_bin_hex(data = middle_data_corr, aes(x = clm, y = binn), bins = 50) +
+    scale_fill_gradientn(name = 'Count', colors = viridis(7), limits = c(0, 20), trans = 'identity', oob = scales::squish) +
+    geom_abline(slope = 1, intercept = 0, size = 2, color = 'black') +
+    scale_x_continuous(trans = 'identity', limits = c(0, 1)) +
+    scale_y_continuous(trans = 'identity', limits = c(0, 1)) +
+    theme_classic() + 
+    # add title
+    labs(title = paste('Parameter: ', para_names[ipara], sep = ''), x = 'PRODA', y = 'BINN') +
+    # add correlation information
+    # annotate('text', label = paste('Correlation: ', round(corr_para_middle$estimate, 2), sep = ''), size = 12, x = -Inf, y = Inf, hjust = -0.2, vjust = 1) +
+    # change the legend properties
+    guides(fill = guide_colorbar(direction = 'horizontal', barwidth = 15, barheight = 2.5, title.position = 'right', title.hjust = 0, title.vjust = 0.8, label.hjust = 0.5, frame.linewidth = 0), reverse = FALSE) +
+    theme(legend.text = element_text(size = 25), legend.title = element_text(size = 25))  +
+    theme(legend.justification = c(1, 0), legend.position = 'None', legend.background = element_rect(fill = NA)) +
+    # modify the position of title
+    theme(plot.title = element_text(hjust = 0.5, size = 50)) +
+    # modify the font size
+    # modify the margin
+    # theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+    theme(plot.margin = unit(c(0., 0.2, 0.2, 0.2), 'inch')) +
+    theme(axis.text=element_text(size = 30, color = 'black'), axis.title = element_text(size = 35), axis.line = element_line(size = 1), axis.ticks = element_line(size = 1, color = 'black'), axis.ticks.length = unit(0.12, 'inch'))
+
+  eval(parse(text = paste('p_corr_para', ipara, ' = p_corr_para', sep = '')))
+}
+jpeg(paste(cross_validation_dir_output, 'Parameter_Correlation.jpeg', sep = ''), width = 60, height = 36, units = 'in', res = 300)
+plot_grid(p_corr_para1, p_corr_para2, p_corr_para3, p_corr_para4, p_corr_para5, p_corr_para6, p_corr_para7, p_corr_para8, p_corr_para9, p_corr_para10, p_corr_para11, p_corr_para12, p_corr_para13, p_corr_para14, p_corr_para15, p_corr_para16, p_corr_para17, p_corr_para18, p_corr_para19, p_corr_para20, p_corr_para21, 
+          nrow = 3, ncol = 7,
+          rel_widths = c(1),
+          labels = c('(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)', '(j)', '(k)', '(l)', '(m)', '(n)', '(o)', '(p)', '(q)', '(r)', '(s)', '(t)', '(u)', '(v)'),
+          label_size = 50,
+          label_x = -0.02, label_y = 1.02,
           label_fontfamily = 'Arial',
           label_fontface = 'bold'
 )

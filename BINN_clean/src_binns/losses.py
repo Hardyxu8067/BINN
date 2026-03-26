@@ -52,10 +52,13 @@ def binns_loss(y_pred, y_true, pred_para, plot_path=""):
 	scale_factor = 10
 	param_reg_loss = torch.mean(torch.cosh(scale_factor*(pred_para - target_value)) - 1)
 
+	# Alternative way to regularize parameters
+	para_diff_squared = torch.mean((pred_para - target_value)**2)
+
 	# Calculate the supervised losses
 	l1_loss = torch.nn.functional.l1_loss(soc_simu_vector, soc_true_vector, reduction='mean')
 	smooth_l1_loss = torch.nn.functional.smooth_l1_loss(soc_simu_vector, soc_true_vector, reduction='mean')
 	l2_loss = torch.nn.functional.mse_loss(soc_simu_vector, soc_true_vector, reduction='mean')
-	return l1_loss, smooth_l1_loss, l2_loss, param_reg_loss, modeling_inefficiency
+	return l1_loss, smooth_l1_loss, l2_loss, param_reg_loss, modeling_inefficiency, para_diff_squared
 # end binns loss
 
