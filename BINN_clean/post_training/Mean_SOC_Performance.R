@@ -62,7 +62,7 @@ GeomBar$draw_key = draw_key_polygon3
 #############################################################################
 # Data Path
 #############################################################################
-cross_validation_folder = 'Cross_Validation_seed_111'
+cross_validation_folder = 'CV_No_Spatial_Info'
 cross_validation_dir_input = paste0('D:/Research/BINN/BINN_output/neural_network/', cross_validation_folder, '/')
 cross_validation_dir_output = paste0('D:/Research/BINN/BINN_output/neural_network/', cross_validation_folder, '/Output/')
 # Get the list of all the folders in the cross validation directory
@@ -381,6 +381,8 @@ p_box_plot = ggplot() +
     theme_minimal(base_family = "Helvetica") +  
     # y axis range starts from 0
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+    # Add NSE on top of the box plot
+    annotate("text", x = 1, y = 0.7, label = paste(round(mean(Mean_SOC_NSE), 2)), size = 20, hjust = 0.5, vjust = 0) +
     # coord_flip() +
     theme(plot.background = element_blank()) +
     theme(axis.line = element_line(size = 1, color = 'black')) +
@@ -749,6 +751,8 @@ p_box_plot = ggplot() +
     theme_minimal(base_family = "Helvetica") +  
     # y axis range starts from 0
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+    # Add NSE on top of the box plot
+    annotate("text", x = 1, y = 0.75, label = paste(round(mean(Mean_SOC_NSE), 2)), size = 18, hjust = 0.5, vjust = 0) +
     # coord_flip() +
     theme(plot.background = element_blank()) +
     theme(axis.line = element_line(size = 1, color = 'black')) +
